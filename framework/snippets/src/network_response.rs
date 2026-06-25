@@ -1,0 +1,271 @@
+use crate::sdk::{
+    data::transaction::{ApiLogs, ApiSmartContractResult, ApiTransactionResult, Events},
+    utils::base64_decode,
+};
+use multiversx_sc_scenario::{
+    imports::{Address, ESDTSystemSCAddress, ReturnCode},
+    multiversx_chain_vm::types::H256,
+    multiversx_sc::chain_core::std::new_address::compute_new_address,
+    scenario_model::{Log, TxResponse, TxResponseStatus},
+};
+
+const SC_DEPLOY_PROCESSING_TYPE: &str = "SCDeployment";
+const LOG_IDENTIFIER_SIGNAL_ERROR: &str = "signalError";
+
+/// Creates a [`TxResponse`] from an [`ApiTransactionResult`].
+pub fn parse_tx_response(tx: ApiTransactionResult, return_code: ReturnCode) -> TxResponse {
+    let tx_error = process_signal_error(&tx, return_code);
+    if !tx_error.is_success() {
+        return TxResponse {
+            tx_error,
+            tx_hash: process_tx_hash(&tx),
+            ..Default::default()
+        };
+    }
+
+    process_success(&tx)
+}
+
+fn process_signal_error(tx: &ApiTransactionResult, return_code: ReturnCode) -> TxResponseStatus {
+    if let Some(event) = find_log(tx, LOG_IDENTIFIER_SIGNAL_ERROR) {
+        if event.topics.len() >= 2 {
+            let error_message = String::from_utf8(base64_decode(&event.topics[1])).expect(
+                "Failed to decode base64-encoded error message from transaction event topic",
+            );
+            return TxResponseStatus::new(return_code, &error_message);
+        }
+    }
+
+    TxResponseStatus::default()
+}
+
+fn process_success(tx: &ApiTransactionResult) -> TxResponse {
+    TxResponse {
+        out: process_out(tx),
+        new_deployed_address: process_new_deployed_address(tx),
+        new_issued_token_identifier: process_new_issued_token_identifier(tx),
+        logs: process_logs(tx),
+        tx_hash: process_tx_hash(tx),
+        gas_used: tx.gas_used,
+        ..Default::default()
+    }
+}
+
+fn process_tx_hash(tx: &ApiTransactionResult) -> Option<H256> {
+    tx.hash.as_ref().map(|encoded_hash| {
+        let decoded = hex::decode(encoded_hash).expect("error decoding tx hash from hex");
+        assert_eq!(decoded.len(), 32);
+        H256::from_slice(&decoded)
+    })
+}
+
+fn process_out(tx: &ApiTransactionResult) -> Vec<Vec<u8>> {
+    let out_multi_transfer = tx.smart_contract_results.iter().find(is_multi_transfer);
+    let out_scr = tx.smart_contract_results.iter().find(is_out_scr);
+
+    if let Some(out_multi_transfer) = out_multi_transfer {
+        log::trace!("Parsing result from multi transfer: {out_multi_transfer:?}");
+        if let Some(data) = decode_multi_transfer_data_or_panic(out_multi_transfer.logs.clone()) {
+            return data;
+        }
+    }
+
+    if let Some(out_scr) = out_scr {
+        log::trace!("Parsing result from scr: {out_scr:?}");
+        return decode_scr_data_or_panic(&out_scr.data);
+    }
+
+    log::trace!("Parsing result from logs");
+    process_out_from_log(tx).unwrap_or_default()
+}
+
+fn process_logs(tx: &ApiTransactionResult) -> Vec<Log> {
+    if let Some(api_logs) = &tx.logs {
+        return api_logs
+            .events
+            .iter()
+            .map(|event| Log {
+                address: event.address.address.clone(),
+                endpoint: event.identifier.clone(),
+                topics: extract_topics(event),
+                data: extract_data(event),
+            })
+            .collect::<Vec<Log>>();
+    }
+
+    Vec::new()
+}
+
+fn extract_data(event: &Events) -> Vec<Vec<u8>> {
+    let mut out: Vec<Vec<u8>> = Vec::new();
+    event
+        .data
+        .for_each(|data_field| out.push(data_field.to_string().into_bytes()));
+    out
+}
+
+fn extract_topics(event: &Events) -> Vec<Vec<u8>> {
+    event
+        .topics
+        .clone()
+        .into_iter()
+        .map(|s| s.into_bytes())
+        .collect()
+}
+
+fn process_out_from_log(tx: &ApiTransactionResult) -> Option<Vec<Vec<u8>>> {
+    if let Some(logs) = &tx.logs {
+        logs.events.iter().rev().find_map(|event| {
+            if event.identifier == "writeLog" {
+                let out = extract_write_log_data(event);
+                return Some(out);
+            }
+
+            None
+        })
+    } else {
+        None
+    }
+}
+
+fn process_new_deployed_address(tx: &ApiTransactionResult) -> Option<Address> {
+    if tx.processing_type_on_destination != SC_DEPLOY_PROCESSING_TYPE {
+        return None;
+    }
+
+    Some(compute_new_address(&tx.sender.address, tx.nonce))
+}
+
+fn process_new_issued_token_identifier(tx: &ApiTransactionResult) -> Option<String> {
+    let Some(data) = &tx.data else {
+        return None;
+    };
+    let original_tx_data = String::from_utf8(base64_decode(data)).unwrap_or_default();
+
+    for scr in tx.smart_contract_results.iter() {
+        if scr.sender.address != ESDTSystemSCAddress.to_address() {
+            continue;
+        }
+
+        let prev_tx_data: &str = if let Some(prev_tx) = tx
+            .smart_contract_results
+            .iter()
+            .find(|e| e.hash == scr.prev_tx_hash)
+        {
+            prev_tx.data.as_ref()
+        } else if tx.hash.as_deref() == Some(scr.prev_tx_hash.as_str()) {
+            &original_tx_data
+        } else {
+            continue;
+        };
+
+        let is_issue_fungible = prev_tx_data.starts_with("issue@");
+        let is_issue_semi_fungible = prev_tx_data.starts_with("issueSemiFungible@");
+        let is_issue_non_fungible = prev_tx_data.starts_with("issueNonFungible@");
+        let is_register_meta_esdt = prev_tx_data.starts_with("registerMetaESDT@");
+        let is_register_and_set_all_roles_esdt =
+            prev_tx_data.starts_with("registerAndSetAllRoles@");
+        let is_register_dynamic_esdt = prev_tx_data.starts_with("registerDynamic");
+        let is_register_and_set_all_roles_dynamic_esdt =
+            prev_tx_data.starts_with("registerAndSetAllRolesDynamic@");
+
+        if !is_issue_fungible
+            && !is_issue_semi_fungible
+            && !is_issue_non_fungible
+            && !is_register_meta_esdt
+            && !is_register_and_set_all_roles_esdt
+            && !is_register_dynamic_esdt
+            && !is_register_and_set_all_roles_dynamic_esdt
+        {
+            continue;
+        }
+
+        if scr.data.starts_with("ESDTTransfer@") {
+            let encoded_tid = scr.data.split('@').nth(1)?;
+            return String::from_utf8(hex::decode(encoded_tid).ok()?).ok();
+        } else if scr.data.starts_with("@00@") || scr.data.starts_with("@6f6b@") {
+            let encoded_tid = scr.data.split('@').nth(2)?;
+            return String::from_utf8(hex::decode(encoded_tid).ok()?).ok();
+        }
+    }
+    None
+}
+
+fn find_log<'a>(tx: &'a ApiTransactionResult, log_identifier: &str) -> Option<&'a Events> {
+    if let Some(logs) = &tx.logs {
+        logs.events
+            .iter()
+            .find(|event| event.identifier == log_identifier)
+    } else {
+        None
+    }
+}
+
+/// Checks for invalid topics.
+pub fn process_topics_error(topics: Option<&Vec<String>>) -> Option<String> {
+    if topics.is_none() {
+        return Some("missing topics".to_string());
+    }
+
+    let topics = topics.unwrap();
+    if topics.len() != 2 {
+        Some(format!(
+            "expected to have 2 topics, found {} instead",
+            topics.len()
+        ))
+    } else {
+        None
+    }
+}
+
+/// Decodes the data of a smart contract result.
+pub fn decode_scr_data_or_panic(data: &str) -> Vec<Vec<u8>> {
+    let mut split = data.split('@');
+    let _ = split.next().expect("SCR data should start with '@'");
+    let result_code = split.next().expect("missing result code");
+    assert_eq!(result_code, "6f6b", "result code is not 'ok'");
+
+    split
+        .map(|encoded_arg| hex::decode(encoded_arg).expect("error hex-decoding result"))
+        .collect()
+}
+
+/// Decodes the data of a multi transfer result.
+pub fn decode_multi_transfer_data_or_panic(logs: Option<ApiLogs>) -> Option<Vec<Vec<u8>>> {
+    let logs = logs?;
+
+    if let Some(event) = logs
+        .events
+        .iter()
+        .find(|event| event.identifier == "writeLog")
+    {
+        let out = extract_write_log_data(event);
+        return Some(out);
+    }
+
+    None
+}
+
+fn extract_write_log_data(event: &Events) -> Vec<Vec<u8>> {
+    let mut out = Vec::new();
+    event.data.for_each(|data_member| {
+        let decoded_data = String::from_utf8(base64_decode(data_member)).unwrap();
+
+        if decoded_data.starts_with('@') {
+            let out_content = decode_scr_data_or_panic(decoded_data.as_str());
+            out.extend(out_content);
+        }
+    });
+
+    out
+}
+
+/// Checks if the given smart contract result is an out smart contract result.
+pub fn is_out_scr(scr: &&ApiSmartContractResult) -> bool {
+    scr.nonce != 0 && scr.data.starts_with('@')
+}
+
+/// Checks if the given smart contract result is a multi transfer smart contract result.
+pub fn is_multi_transfer(scr: &&ApiSmartContractResult) -> bool {
+    scr.data.starts_with("MultiESDTNFTTransfer@")
+}

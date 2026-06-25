@@ -1,0 +1,94 @@
+use std::{
+    ops::Deref,
+    sync::{Arc, Weak},
+};
+
+use crate::host::context::{TxContext, TxResult};
+
+use super::{BlockchainUpdate, TxPanic};
+
+/// The VM API implementation based on a blockchain mock written in Rust.
+/// Implemented as a smart pointer to a TxContext structure, which tracks a blockchain transaction.
+#[derive(Debug)]
+pub struct TxContextRef(pub Arc<TxContext>);
+
+impl Deref for TxContextRef {
+    type Target = TxContext;
+    fn deref(&self) -> &Self::Target {
+        self.0.deref()
+    }
+}
+
+impl Clone for TxContextRef {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl TxContextRef {
+    pub fn new(tx_context_arc: Arc<TxContext>) -> Self {
+        Self(tx_context_arc)
+    }
+
+    pub fn dummy() -> Self {
+        Self::new(Arc::new(TxContext::dummy()))
+    }
+
+    pub fn into_blockchain_updates(self) -> BlockchainUpdate {
+        let tx_context = Arc::try_unwrap(self.0).unwrap();
+        let tx_cache = Arc::try_unwrap(tx_context.tx_cache).unwrap();
+        tx_cache.into_blockchain_updates()
+    }
+
+    /// Consumes the current API and returns the contained output.
+    /// Should be called at the end of a tx execution.
+    /// Will fail if any other references to the tx context survive, this must be the last.
+    pub fn into_tx_result(self) -> TxResult {
+        // TODO: investigate if we can also destroy the Arc
+        // can be done if we can make sure that no more references exist at this point
+        // let tx_context = Arc::try_unwrap(self.0).unwrap();
+        std::mem::take(&mut *self.tx_result_cell.lock().unwrap())
+    }
+
+    /// The current method for signalling that the current execution is failed, and with what error.
+    ///
+    /// Note: does not terminate execution or panic, that is handled separately.
+    pub fn replace_tx_result_with_error(self, tx_panic: TxPanic) {
+        self.tx_result_cell
+            .lock()
+            .unwrap()
+            .merge_error(TxResult::from_panic_obj(&tx_panic));
+    }
+
+    /// Returns true if the references point to the same `TxContext`.
+    pub fn ptr_eq(this: &Self, other: &Self) -> bool {
+        Arc::ptr_eq(&this.0, &other.0)
+    }
+
+    /// Returns a raw pointer to the underlying `TxContext`.
+    ///
+    /// This is useful for pointer comparisons, particularly when comparing
+    /// with weak references to determine if they point to the same context.
+    pub fn as_ptr(&self) -> *const TxContext {
+        Arc::as_ptr(&self.0)
+    }
+
+    pub fn into_ref(self) -> Arc<TxContext> {
+        self.0
+    }
+
+    /// Creates a new [`Weak`] pointer to the [`TxContext`].
+    ///
+    /// This is the preferred way to obtain a non‑owning reference to the underlying
+    /// `TxContext` when you need to store a handle that should not keep the transaction
+    /// alive on its own. In particular, this method underpins the weak‑pointer pattern
+    /// used by [`DebugHandle`], which holds a `Weak<TxContext>` so that debug tooling
+    /// can observe a transaction while it exists, without extending its lifetime.
+    ///
+    /// Callers that use the returned [`Weak`] must call [`Weak::upgrade`] before
+    /// accessing the `TxContext` and be prepared to handle the case where upgrading
+    /// fails because the transaction context has already been dropped.
+    pub fn downgrade(&self) -> Weak<TxContext> {
+        Arc::downgrade(&self.0)
+    }
+}

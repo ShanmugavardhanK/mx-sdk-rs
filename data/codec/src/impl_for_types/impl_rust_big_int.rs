@@ -1,0 +1,105 @@
+use alloc::vec::Vec;
+use num_bigint::BigInt;
+use num_traits::Zero;
+
+use crate::{
+    DecodeErrorHandler, EncodeErrorHandler, NestedDecode, NestedDecodeInput, NestedEncode,
+    NestedEncodeOutput, TopDecode, TopDecodeInput, TopEncode, TopEncodeOutput,
+};
+
+/// Note: to_signed_bytes_be may return [] or [0] for zero,
+/// this function makes sure we consistently return [].
+fn big_int_to_bytes_be(n: &BigInt) -> Vec<u8> {
+    if n.is_zero() {
+        Vec::new()
+    } else {
+        n.to_signed_bytes_be()
+    }
+}
+
+impl TopEncode for BigInt {
+    fn top_encode_or_handle_err<O, H>(&self, output: O, h: H) -> Result<(), H::HandledErr>
+    where
+        O: TopEncodeOutput,
+        H: EncodeErrorHandler,
+    {
+        big_int_to_bytes_be(self).top_encode_or_handle_err(output, h)
+    }
+}
+
+impl TopDecode for BigInt {
+    fn top_decode_or_handle_err<I, H>(input: I, h: H) -> Result<Self, H::HandledErr>
+    where
+        I: TopDecodeInput,
+        H: DecodeErrorHandler,
+    {
+        let bytes = Vec::<u8>::top_decode_or_handle_err(input, h)?;
+        Ok(Self::from_signed_bytes_be(bytes.as_slice()))
+    }
+}
+
+impl NestedEncode for BigInt {
+    fn dep_encode_or_handle_err<O, H>(&self, dest: &mut O, h: H) -> Result<(), H::HandledErr>
+    where
+        O: NestedEncodeOutput,
+        H: EncodeErrorHandler,
+    {
+        big_int_to_bytes_be(self).dep_encode_or_handle_err(dest, h)
+    }
+}
+
+impl NestedDecode for BigInt {
+    fn dep_decode_or_handle_err<I, H>(input: &mut I, h: H) -> Result<Self, H::HandledErr>
+    where
+        I: NestedDecodeInput,
+        H: DecodeErrorHandler,
+    {
+        let bytes = Vec::<u8>::dep_decode_or_handle_err(input, h)?;
+        Ok(Self::from_signed_bytes_be(bytes.as_slice()))
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use crate::test_util::{check_dep_encode_decode, check_top_encode_decode};
+    use num_bigint::BigInt;
+
+    #[test]
+    fn test_top() {
+        check_top_encode_decode(BigInt::from(5), &[5]);
+        check_top_encode_decode(BigInt::from(127), &[127]);
+        check_top_encode_decode(BigInt::from(128), &[0, 128]);
+        check_top_encode_decode(BigInt::from(-128), &[128]);
+        check_top_encode_decode(BigInt::from(256), &[1, 0]);
+    }
+
+    #[test]
+    fn test_dep() {
+        check_dep_encode_decode(BigInt::from(5), &[0, 0, 0, 1, 5]);
+        check_dep_encode_decode(BigInt::from(-5), &[0, 0, 0, 1, 251]);
+    }
+
+    #[test]
+    fn test_top_zero() {
+        check_top_encode_decode(BigInt::from(0), &[]);
+    }
+
+    #[test]
+    fn test_dep_zero() {
+        check_dep_encode_decode(BigInt::from(0), &[0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_top_large_negative() {
+        // -129 in signed bytes = 0xFF7F
+        check_top_encode_decode(BigInt::from(-129), &[0xFF, 0x7F]);
+        // -256 in signed bytes = 0xFF00
+        check_top_encode_decode(BigInt::from(-256), &[0xFF, 0x00]);
+    }
+
+    #[test]
+    fn test_dep_large() {
+        check_dep_encode_decode(BigInt::from(256), &[0, 0, 0, 2, 1, 0]);
+        check_dep_encode_decode(BigInt::from(-256), &[0, 0, 0, 2, 0xFF, 0x00]);
+    }
+}

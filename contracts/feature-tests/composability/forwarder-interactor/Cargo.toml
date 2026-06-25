@@ -1,0 +1,35 @@
+[package]
+name = "forwarder-interact"
+version = "0.0.0"
+authors = ["you"]
+edition = "2024"
+publish = false
+
+[[bin]]
+name = "forwarder-interact"
+path = "src/interactor_main.rs"
+
+[lib]
+path = "src/interact.rs"
+
+[dependencies.forwarder]
+path = "../forwarder"
+
+[dependencies.multiversx-sc-snippets]
+version = "0.66.1"
+path = "../../../../framework/snippets"
+
+[dependencies.multiversx-sc]
+version = "0.66.1"
+path = "../../../../framework/base"
+
+[dependencies]
+clap = { version = "4.4", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+toml = "1.0"
+
+[dev-dependencies]
+serial_test = "3.2"
+
+[features]
+chain-simulator-tests = []

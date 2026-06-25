@@ -1,0 +1,179 @@
+use multiversx_sc_scenario::{
+    ScenarioTxEnvData,
+    imports::{NotPayable, ScCallStep, TxToSpecified, UpgradeCall},
+    multiversx_sc::{
+        tuple_util::NestedTupleFlatten,
+        types::{
+            Code, DeployCall, RHListExec, Tx, TxBaseWithEnv, TxCodeValue, TxFromSpecified, TxGas,
+            TxPayment,
+        },
+    },
+    scenario::tx_to_step::{StepWrapper, TxToStep, address_annotated, code_annotated},
+    scenario_model::{ScDeployStep, TxResponse},
+};
+use multiversx_sdk::{data::transaction::Transaction, gateway::GatewayAsyncService};
+
+use crate::{InteractorBase, InteractorSimulateGasAsync};
+
+use super::{
+    InteractorEnvExec, InteractorExecStep, InteractorIntoSdkTransaction, InteractorPrepareAsync,
+    InteractorRunAsync,
+};
+
+#[allow(clippy::type_complexity)]
+async fn run_async_upgrade<'w, GatewayProxy, From, To, Gas, CodeValue, RH>(
+    tx: Tx<
+        InteractorEnvExec<'w, GatewayProxy>,
+        From,
+        To,
+        NotPayable,
+        Gas,
+        UpgradeCall<InteractorEnvExec<'w, GatewayProxy>, Code<CodeValue>>,
+        RH,
+    >,
+) -> <RH::ListReturns as NestedTupleFlatten>::Unpacked
+where
+    GatewayProxy: GatewayAsyncService,
+    From: TxFromSpecified<InteractorEnvExec<'w, GatewayProxy>>,
+    To: TxToSpecified<InteractorEnvExec<'w, GatewayProxy>>,
+    Gas: TxGas<InteractorEnvExec<'w, GatewayProxy>>,
+    CodeValue: TxCodeValue<InteractorEnvExec<'w, GatewayProxy>>,
+    RH: RHListExec<TxResponse, InteractorEnvExec<'w, GatewayProxy>>,
+    RH::ListReturns: NestedTupleFlatten,
+{
+    let mut step_wrapper = tx.tx_to_step();
+    step_wrapper.env.world.sc_call(&mut step_wrapper.step).await;
+    step_wrapper.process_result()
+}
+
+#[allow(clippy::type_complexity)]
+async fn simulate_gas_async_upgrade<'w, GatewayProxy, From, To, Gas, CodeValue, RH>(
+    tx: Tx<
+        InteractorEnvExec<'w, GatewayProxy>,
+        From,
+        To,
+        NotPayable,
+        Gas,
+        UpgradeCall<InteractorEnvExec<'w, GatewayProxy>, Code<CodeValue>>,
+        RH,
+    >,
+) -> u64
+where
+    GatewayProxy: GatewayAsyncService,
+    From: TxFromSpecified<InteractorEnvExec<'w, GatewayProxy>>,
+    To: TxToSpecified<InteractorEnvExec<'w, GatewayProxy>>,
+    Gas: TxGas<InteractorEnvExec<'w, GatewayProxy>>,
+    CodeValue: TxCodeValue<InteractorEnvExec<'w, GatewayProxy>>,
+    RH: RHListExec<TxResponse, InteractorEnvExec<'w, GatewayProxy>>,
+{
+    let step_wrapper = tx.tx_to_step();
+    step_wrapper
+        .env
+        .world
+        .sc_call_simulate(&step_wrapper.step)
+        .await
+}
+
+impl<'w, GatewayProxy, From, To, Gas, CodeValue, RH> InteractorRunAsync
+    for Tx<
+        InteractorEnvExec<'w, GatewayProxy>,
+        From,
+        To,
+        NotPayable,
+        Gas,
+        UpgradeCall<InteractorEnvExec<'w, GatewayProxy>, Code<CodeValue>>,
+        RH,
+    >
+where
+    GatewayProxy: GatewayAsyncService,
+    From: TxFromSpecified<InteractorEnvExec<'w, GatewayProxy>>,
+    To: TxToSpecified<InteractorEnvExec<'w, GatewayProxy>>,
+    Gas: TxGas<InteractorEnvExec<'w, GatewayProxy>>,
+    CodeValue: TxCodeValue<InteractorEnvExec<'w, GatewayProxy>>,
+    RH: RHListExec<TxResponse, InteractorEnvExec<'w, GatewayProxy>>,
+    RH::ListReturns: NestedTupleFlatten,
+{
+    type Result = <RH::ListReturns as NestedTupleFlatten>::Unpacked;
+
+    fn run(self) -> impl std::future::Future<Output = Self::Result> {
+        run_async_upgrade(self)
+    }
+}
+
+impl<'w, GatewayProxy, From, To, Gas, CodeValue, RH> InteractorIntoSdkTransaction
+    for Tx<
+        InteractorEnvExec<'w, GatewayProxy>,
+        From,
+        To,
+        NotPayable,
+        Gas,
+        UpgradeCall<InteractorEnvExec<'w, GatewayProxy>, Code<CodeValue>>,
+        RH,
+    >
+where
+    GatewayProxy: GatewayAsyncService,
+    From: TxFromSpecified<InteractorEnvExec<'w, GatewayProxy>>,
+    To: TxToSpecified<InteractorEnvExec<'w, GatewayProxy>>,
+    Gas: TxGas<InteractorEnvExec<'w, GatewayProxy>>,
+    CodeValue: TxCodeValue<InteractorEnvExec<'w, GatewayProxy>>,
+    RH: RHListExec<TxResponse, InteractorEnvExec<'w, GatewayProxy>>,
+    RH::ListReturns: NestedTupleFlatten,
+{
+    fn into_sdk_transaction(self) -> Transaction {
+        let step_wrapper = self.tx_to_step();
+        step_wrapper
+            .env
+            .world
+            .tx_call_to_blockchain_tx(&step_wrapper.step.tx)
+    }
+}
+
+impl<'w, GatewayProxy, From, To, CodeValue, RH> InteractorSimulateGasAsync
+    for Tx<
+        InteractorEnvExec<'w, GatewayProxy>,
+        From,
+        To,
+        NotPayable,
+        (),
+        UpgradeCall<InteractorEnvExec<'w, GatewayProxy>, Code<CodeValue>>,
+        RH,
+    >
+where
+    GatewayProxy: GatewayAsyncService,
+    From: TxFromSpecified<InteractorEnvExec<'w, GatewayProxy>>,
+    To: TxToSpecified<InteractorEnvExec<'w, GatewayProxy>>,
+    CodeValue: TxCodeValue<InteractorEnvExec<'w, GatewayProxy>>,
+    RH: RHListExec<TxResponse, InteractorEnvExec<'w, GatewayProxy>>,
+{
+    fn simulate_gas(self) -> impl std::future::Future<Output = u64> {
+        simulate_gas_async_upgrade(self)
+    }
+}
+
+impl<'w, GatewayProxy, From, To, Gas, CodeValue, RH> InteractorPrepareAsync
+    for Tx<
+        InteractorEnvExec<'w, GatewayProxy>,
+        From,
+        To,
+        NotPayable,
+        Gas,
+        UpgradeCall<InteractorEnvExec<'w, GatewayProxy>, Code<CodeValue>>,
+        RH,
+    >
+where
+    GatewayProxy: GatewayAsyncService,
+    From: TxFromSpecified<InteractorEnvExec<'w, GatewayProxy>>,
+    To: TxToSpecified<InteractorEnvExec<'w, GatewayProxy>>,
+    Gas: TxGas<InteractorEnvExec<'w, GatewayProxy>>,
+    CodeValue: TxCodeValue<InteractorEnvExec<'w, GatewayProxy>>,
+    RH: RHListExec<TxResponse, InteractorEnvExec<'w, GatewayProxy>>,
+    RH::ListReturns: NestedTupleFlatten,
+{
+    type Exec = InteractorExecStep<'w, GatewayProxy, ScCallStep, RH>;
+
+    fn prepare_async(self) -> Self::Exec {
+        InteractorExecStep {
+            step_wrapper: self.tx_to_step(),
+        }
+    }
+}

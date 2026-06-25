@@ -1,0 +1,45 @@
+pub mod install_debugger;
+mod install_scenario_go;
+mod system_info;
+
+use multiversx_sc_meta_lib::tools::{self, RustcVersion};
+
+use crate::cli::{
+    InstallArgs, InstallCommand, InstallDebuggerArgs, InstallMxScenarioGoArgs, InstallWasm32Args,
+    InstallWasmOptArgs,
+};
+
+pub async fn install(args: &InstallArgs) {
+    // validated before, can unwrap directly
+    let command = args.command.as_ref().unwrap();
+
+    match command {
+        InstallCommand::All => {
+            install_scenario_go(&InstallMxScenarioGoArgs::default()).await;
+            install_wasm32(&InstallWasm32Args::default());
+            install_wasm_opt(&InstallWasmOptArgs::default());
+            install_debugger(&InstallDebuggerArgs::default()).await;
+        }
+        InstallCommand::MxScenarioGo(sg_args) => install_scenario_go(sg_args).await,
+        InstallCommand::Wasm32(wam32_args) => install_wasm32(wam32_args),
+        InstallCommand::WasmOpt(wasm_opt_args) => install_wasm_opt(wasm_opt_args),
+        InstallCommand::Debugger(debugger_args) => install_debugger(debugger_args).await,
+    }
+}
+
+async fn install_scenario_go(sg_args: &InstallMxScenarioGoArgs) {
+    install_scenario_go::install(sg_args.tag.clone(), sg_args.path.clone()).await;
+}
+
+fn install_wasm32(wasm32_args: &InstallWasm32Args) {
+    let rustc_version = RustcVersion::from_opt_toolchain(wasm32_args.toolchain.as_deref());
+    tools::install_wasm_target::install_all_wasm32_targets(Some(&rustc_version));
+}
+
+fn install_wasm_opt(_wasm_opt_args: &InstallWasmOptArgs) {
+    tools::install_wasm_opt();
+}
+
+async fn install_debugger(_debugger_args: &InstallDebuggerArgs) {
+    install_debugger::install_debugger(Option::None).await;
+}

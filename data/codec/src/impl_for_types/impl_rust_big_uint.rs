@@ -1,0 +1,102 @@
+use alloc::vec::Vec;
+use num_bigint::BigUint;
+use num_traits::Zero;
+
+use crate::{
+    DecodeErrorHandler, EncodeErrorHandler, NestedDecode, NestedDecodeInput, NestedEncode,
+    NestedEncodeOutput, TopDecode, TopDecodeInput, TopEncode, TopEncodeOutput,
+};
+
+/// Note: to_bytes_be may return [] or [0] for zero,
+/// this function makes sure we consistently return [].
+fn big_uint_to_bytes_be(n: &BigUint) -> Vec<u8> {
+    if n.is_zero() {
+        Vec::new()
+    } else {
+        n.to_bytes_be()
+    }
+}
+
+impl TopEncode for BigUint {
+    fn top_encode_or_handle_err<O, H>(&self, output: O, h: H) -> Result<(), H::HandledErr>
+    where
+        O: TopEncodeOutput,
+        H: EncodeErrorHandler,
+    {
+        big_uint_to_bytes_be(self).top_encode_or_handle_err(output, h)
+    }
+}
+
+impl TopDecode for BigUint {
+    fn top_decode_or_handle_err<I, H>(input: I, h: H) -> Result<Self, H::HandledErr>
+    where
+        I: TopDecodeInput,
+        H: DecodeErrorHandler,
+    {
+        let bytes = Vec::<u8>::top_decode_or_handle_err(input, h)?;
+        Ok(Self::from_bytes_be(bytes.as_slice()))
+    }
+}
+
+impl NestedEncode for BigUint {
+    fn dep_encode_or_handle_err<O, H>(&self, dest: &mut O, h: H) -> Result<(), H::HandledErr>
+    where
+        O: NestedEncodeOutput,
+        H: EncodeErrorHandler,
+    {
+        big_uint_to_bytes_be(self).dep_encode_or_handle_err(dest, h)
+    }
+}
+
+impl NestedDecode for BigUint {
+    fn dep_decode_or_handle_err<I, H>(input: &mut I, h: H) -> Result<Self, H::HandledErr>
+    where
+        I: NestedDecodeInput,
+        H: DecodeErrorHandler,
+    {
+        let bytes = Vec::<u8>::dep_decode_or_handle_err(input, h)?;
+        Ok(Self::from_bytes_be(bytes.as_slice()))
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use crate::test_util::{check_dep_encode_decode, check_top_encode_decode};
+    use num_bigint::BigUint;
+
+    #[test]
+    fn test_top() {
+        check_top_encode_decode(BigUint::from(5u32), &[5]);
+    }
+
+    #[test]
+    fn test_dep() {
+        check_dep_encode_decode(BigUint::from(5u32), &[0, 0, 0, 1, 5]);
+    }
+
+    #[test]
+    fn test_top_zero() {
+        check_top_encode_decode(BigUint::from(0u32), &[]);
+    }
+
+    #[test]
+    fn test_dep_zero() {
+        check_dep_encode_decode(BigUint::from(0u32), &[0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_top_large() {
+        // 256 = 0x0100
+        check_top_encode_decode(BigUint::from(256u32), &[1, 0]);
+        // u64::MAX
+        check_top_encode_decode(
+            BigUint::from(u64::MAX),
+            &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF],
+        );
+    }
+
+    #[test]
+    fn test_dep_large() {
+        check_dep_encode_decode(BigUint::from(256u32), &[0, 0, 0, 2, 1, 0]);
+    }
+}

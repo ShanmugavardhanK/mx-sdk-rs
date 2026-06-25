@@ -1,0 +1,61 @@
+use multiversx_chain_vm_executor::VMHooksEarlyExit;
+use multiversx_sc::api::HandleConstraints;
+
+use crate::executor::debug::{StaticVarData, VMHooksDebugger};
+
+pub trait VMHooksApiBackend: Clone + Send + Sync + 'static {
+    /// We use a single handle type for all handles.
+    type HandleType: HandleConstraints;
+
+    /// All communication with the VM happens via this method.
+    fn with_vm_hooks<R, F>(f: F) -> R
+    where
+        F: FnOnce(&mut dyn VMHooksDebugger) -> Result<R, VMHooksEarlyExit>;
+
+    fn with_vm_hooks_ctx_1<R, F>(_handle: Self::HandleType, f: F) -> R
+    where
+        F: FnOnce(&mut dyn VMHooksDebugger) -> Result<R, VMHooksEarlyExit>,
+    {
+        Self::with_vm_hooks(f)
+    }
+
+    fn with_vm_hooks_ctx_2<R, F>(_handle1: Self::HandleType, _handle2: Self::HandleType, f: F) -> R
+    where
+        F: FnOnce(&mut dyn VMHooksDebugger) -> Result<R, VMHooksEarlyExit>,
+    {
+        Self::with_vm_hooks(f)
+    }
+
+    fn with_vm_hooks_ctx_3<R, F>(
+        _handle1: Self::HandleType,
+        _handle2: Self::HandleType,
+        _handle3: Self::HandleType,
+        f: F,
+    ) -> R
+    where
+        F: FnOnce(&mut dyn VMHooksDebugger) -> Result<R, VMHooksEarlyExit>,
+    {
+        Self::with_vm_hooks(f)
+    }
+
+    fn with_vm_hooks_ctx_if_active<F>(_handle: Self::HandleType, f: F)
+    where
+        F: FnOnce(&mut dyn VMHooksDebugger),
+    {
+        Self::with_vm_hooks(|vh| {
+            f(vh);
+            Ok(())
+        })
+    }
+
+    fn assert_live_handle(_handle: &Self::HandleType) {
+        // by default, no check
+    }
+
+    /// Static data does not belong to the VM, or to the VM hooks. It belongs to the contract only.
+    fn with_static_data<R, F>(f: F) -> R
+    where
+        F: FnOnce(&StaticVarData) -> R;
+
+    fn backend_requires_managed_type_drop() -> bool;
+}

@@ -1,0 +1,98 @@
+use crate::cli::{ReproducibleBuildCliAction, StandaloneCliAction, StandaloneCliArgs};
+use crate::cmd::chain_simulator::chain_simulator;
+use crate::cmd::data::data_cli;
+use crate::cmd::retrieve_address::retrieve_address;
+use crate::cmd::scen_blackbox::scen_blackbox_tool;
+use crate::cmd::tx::tx_cli;
+use crate::cmd::wallet::wallet;
+use clap::Parser;
+
+use crate::cmd::all::call_all_meta;
+use crate::cmd::code_report::report;
+use crate::cmd::info::call_info;
+use crate::cmd::install::install;
+use crate::cmd::reproducible_builds::{
+    check_contract_verification, docker_build, download_contract_verification, init_config,
+    local_build, local_deps, publish_contract, release_notes, source_pack, source_unpack,
+    unpublish_contract,
+};
+use crate::cmd::scen_test_gen::test_gen_tool;
+use crate::cmd::template::{create_contract, print_template_names};
+use crate::cmd::test::test;
+use crate::cmd::test_coverage::test_coverage;
+
+use crate::cmd::upgrade::upgrade_sc;
+
+/// Entry point in the program when calling it as a standalone tool.
+pub async fn cli_main_standalone() {
+    let cli_args = StandaloneCliArgs::parse();
+    match &cli_args.command {
+        Some(StandaloneCliAction::Info(args)) => call_info(args),
+        Some(StandaloneCliAction::Install(args)) => {
+            args.validate_args();
+            install(args).await;
+        }
+        Some(StandaloneCliAction::All(args)) => call_all_meta(args),
+        Some(StandaloneCliAction::Upgrade(args)) => {
+            args.validate_args();
+            upgrade_sc(args);
+        }
+        Some(StandaloneCliAction::Template(args)) => {
+            args.validate_args();
+            create_contract(args).await;
+        }
+        Some(StandaloneCliAction::TemplateList(args)) => {
+            args.validate_args();
+            print_template_names(args).await;
+        }
+        Some(StandaloneCliAction::TestGen(args)) => {
+            test_gen_tool(args);
+        }
+        Some(StandaloneCliAction::ScenBlackbox(args)) => {
+            scen_blackbox_tool(args);
+        }
+        Some(StandaloneCliAction::Test(args)) => test(args),
+        Some(StandaloneCliAction::TestCoverage(args)) => {
+            test_coverage(args);
+        }
+        Some(StandaloneCliAction::CodeReportGen(args)) => {
+            args.validate_args();
+            report(args);
+        }
+        Some(StandaloneCliAction::Account(args)) => {
+            args.validate_args();
+            retrieve_address(args).await;
+        }
+        Some(StandaloneCliAction::LocalDeps(args)) => {
+            local_deps(args);
+        }
+        Some(StandaloneCliAction::ReproducibleBuild(rb_args)) => match &rb_args.command {
+            ReproducibleBuildCliAction::SourcePack(args) => source_pack(args),
+            ReproducibleBuildCliAction::LocalBuild(args) => local_build(args),
+            ReproducibleBuildCliAction::Build(args) => docker_build(args),
+            ReproducibleBuildCliAction::LocalDeps(args) => local_deps(args),
+            ReproducibleBuildCliAction::SourceUnpack(args) => source_unpack(args),
+            ReproducibleBuildCliAction::InitConfig(args) => init_config(args),
+            ReproducibleBuildCliAction::ReleaseNotes(args) => release_notes(args),
+            ReproducibleBuildCliAction::Publish(args) => publish_contract(args).await,
+            ReproducibleBuildCliAction::Unpublish(args) => unpublish_contract(args).await,
+            ReproducibleBuildCliAction::Check(args) => check_contract_verification(args).await,
+            ReproducibleBuildCliAction::Download(args) => {
+                download_contract_verification(args).await
+            }
+        },
+        Some(StandaloneCliAction::Wallet(args)) => {
+            wallet(args);
+        }
+        Some(StandaloneCliAction::ChainSimulator(args)) => {
+            chain_simulator(args);
+        }
+        Some(StandaloneCliAction::Tx(args)) => {
+            tx_cli(args).await;
+        }
+        Some(StandaloneCliAction::Data(args)) => {
+            data_cli(args);
+        }
+        None => {}
+    }
+}

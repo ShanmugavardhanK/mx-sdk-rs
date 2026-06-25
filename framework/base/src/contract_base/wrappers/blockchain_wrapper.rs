@@ -1,0 +1,739 @@
+use core::marker::PhantomData;
+
+use multiversx_chain_core::{
+    EGLD_000000_TOKEN_IDENTIFIER,
+    types::{DurationMillis, TimestampMillis, TimestampSeconds},
+};
+
+use crate::{
+    api::{
+        BigIntApiImpl, BlockchainApi, BlockchainApiImpl, ErrorApi, ErrorApiImpl, HandleConstraints,
+        ManagedBufferApiImpl, ManagedTypeApi, ManagedTypeApiImpl, StaticVarApiImpl, StorageReadApi,
+        StorageReadApiImpl, const_handles, use_raw_handle,
+    },
+    codec::TopDecode,
+    err_msg::{ONLY_OWNER_CALLER, ONLY_USER_ACCOUNT_CALLER},
+    storage,
+    types::{
+        BackTransfers, BackTransfersLegacy, BigUint, CodeMetadata, EgldOrEsdtTokenIdentifier,
+        EgldOrEsdtTokenPayment, EsdtLocalRoleFlags, EsdtTokenData, EsdtTokenIdentifier,
+        EsdtTokenType, ManagedAddress, ManagedBuffer, ManagedByteArray, ManagedRef, ManagedRefMut,
+        ManagedType, ManagedVec, SystemSCAddress, TokenId,
+    },
+};
+
+/// Interface to be used by the actual smart contract code.
+///
+/// Note: contracts and the api are not mutable.
+/// They simply pass on/retrieve data to/from the protocol.
+/// When mocking the blockchain state, we use the Rc/RefCell pattern
+/// to isolate mock state mutability from the contract interface.
+#[derive(Default)]
+pub struct BlockchainWrapper<A>
+where
+    A: ManagedTypeApi + ErrorApi,
+{
+    _phantom: PhantomData<A>,
+}
+
+impl<A> BlockchainWrapper<A>
+where
+    A: ManagedTypeApi + ErrorApi,
+{
+    pub fn new() -> Self {
+        BlockchainWrapper {
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<A> BlockchainWrapper<A>
+where
+    A: BlockchainApi + ManagedTypeApi + ErrorApi,
+{
+    #[deprecated(since = "0.41.0", note = "Please use method `get_caller` instead.")]
+    #[cfg(feature = "alloc")]
+    #[inline]
+    pub fn get_caller_legacy(&self) -> crate::types::Address {
+        A::blockchain_api_impl().get_caller_legacy()
+    }
+
+    #[inline]
+    pub fn get_caller(&self) -> ManagedAddress<A> {
+        unsafe {
+            let result = ManagedAddress::new_uninit();
+            A::blockchain_api_impl().load_caller_managed(result.get_handle());
+            result
+        }
+    }
+
+    #[deprecated(since = "0.41.0", note = "Please use method `get_sc_address` instead.")]
+    #[cfg(feature = "alloc")]
+    #[inline]
+    pub fn get_sc_address_legacy(&self) -> crate::types::Address {
+        A::blockchain_api_impl().get_sc_address_legacy()
+    }
+
+    #[inline]
+    pub fn get_sc_address(&self) -> ManagedAddress<A> {
+        unsafe {
+            let result = ManagedAddress::new_uninit();
+            A::blockchain_api_impl().load_sc_address_managed(result.get_handle());
+            result
+        }
+    }
+
+    #[inline]
+    pub fn get_owner_address(&self) -> ManagedAddress<A> {
+        unsafe {
+            let result = ManagedAddress::new_uninit();
+            A::blockchain_api_impl().load_owner_address_managed(result.get_handle());
+            result
+        }
+    }
+
+    pub fn check_caller_is_owner(&self) {
+        if self.get_owner_address() != self.get_caller() {
+            A::error_api_impl().signal_error(ONLY_OWNER_CALLER.as_bytes());
+        }
+    }
+
+    pub fn check_caller_is_user_account(&self) {
+        let mbuf_temp_1: A::ManagedBufferHandle = use_raw_handle(const_handles::MBUF_TEMPORARY_1);
+        A::blockchain_api_impl().load_caller_managed(mbuf_temp_1.clone());
+        if A::blockchain_api_impl().is_smart_contract(mbuf_temp_1) {
+            A::error_api_impl().signal_error(ONLY_USER_ACCOUNT_CALLER.as_bytes());
+        }
+    }
+
+    #[deprecated(
+        since = "0.41.0",
+        note = "Please use method `get_shard_of_address` instead."
+    )]
+    #[cfg(feature = "alloc")]
+    #[inline]
+    pub fn get_shard_of_address_legacy(&self, address: &crate::types::Address) -> u32 {
+        A::blockchain_api_impl().get_shard_of_address_legacy(address)
+    }
+
+    #[inline]
+    pub fn get_shard_of_address(&self, address: &ManagedAddress<A>) -> u32 {
+        A::blockchain_api_impl().get_shard_of_address(address.get_handle())
+    }
+
+    #[deprecated(
+        since = "0.41.0",
+        note = "Please use method `is_smart_contract` instead."
+    )]
+    #[cfg(feature = "alloc")]
+    #[inline]
+    pub fn is_smart_contract_legacy(&self, address: &crate::types::Address) -> bool {
+        A::blockchain_api_impl().is_smart_contract_legacy(address)
+    }
+
+    #[inline]
+    pub fn is_smart_contract(&self, address: &ManagedAddress<A>) -> bool {
+        A::blockchain_api_impl().is_smart_contract(address.get_handle())
+    }
+
+    #[deprecated(since = "0.41.0", note = "Please use method `get_balance` instead.")]
+    #[cfg(feature = "alloc")]
+    #[inline]
+    pub fn get_balance_legacy(&self, address: &crate::types::Address) -> BigUint<A> {
+        unsafe {
+            let result = BigUint::new_uninit();
+            A::blockchain_api_impl().load_balance_legacy(result.get_handle(), address);
+            result
+        }
+    }
+
+    #[inline]
+    pub fn get_balance(&self, address: &ManagedAddress<A>) -> BigUint<A> {
+        unsafe {
+            let result = BigUint::new_uninit();
+            A::blockchain_api_impl().load_balance(result.get_handle(), address.get_handle());
+            result
+        }
+    }
+
+    pub fn get_code_metadata(&self, address: &ManagedAddress<A>) -> CodeMetadata {
+        let mbuf_temp_1: A::ManagedBufferHandle = use_raw_handle(const_handles::MBUF_TEMPORARY_1);
+        A::blockchain_api_impl()
+            .managed_get_code_metadata(address.get_handle(), mbuf_temp_1.clone());
+        let mut buffer = [0u8; 2];
+        unsafe {
+            ManagedRefMut::<'static, A, ManagedBuffer<A>>::wrap_handle(mbuf_temp_1)
+                .load_to_byte_array(&mut buffer);
+        }
+        CodeMetadata::from(buffer)
+    }
+
+    pub fn get_code_hash(&self, address: &ManagedAddress<A>) -> ManagedBuffer<A> {
+        unsafe {
+            let result = ManagedBuffer::new_uninit();
+            A::blockchain_api_impl()
+                .managed_get_code_hash(address.get_handle(), result.get_handle());
+            result
+        }
+    }
+
+    #[inline]
+    pub fn is_builtin_function(&self, function_name: &ManagedBuffer<A>) -> bool {
+        A::blockchain_api_impl().managed_is_builtin_function(function_name.get_handle())
+    }
+
+    #[inline]
+    pub fn get_sc_balance(&self, token_id: impl AsRef<TokenId<A>>, nonce: u64) -> BigUint<A> {
+        let token_id_ref = token_id.as_ref();
+        if self.is_native_token(token_id_ref) {
+            self.get_balance(&self.get_sc_address())
+        } else {
+            self.get_esdt_balance(
+                &self.get_sc_address(),
+                unsafe { token_id_ref.as_esdt_unchecked() },
+                nonce,
+            )
+        }
+    }
+
+    #[deprecated(
+        since = "0.41.0",
+        note = "Please use method `get_state_root_hash` instead."
+    )]
+    #[cfg(feature = "alloc")]
+    #[inline]
+    pub fn get_state_root_hash_legacy(&self) -> crate::types::H256 {
+        self.get_state_root_hash().to_byte_array().into()
+    }
+
+    #[inline]
+    pub fn get_state_root_hash(&self) -> ManagedByteArray<A, 32> {
+        unsafe {
+            let result = ManagedByteArray::new_uninit();
+            A::blockchain_api_impl().load_state_root_hash_managed(result.get_handle());
+            result
+        }
+    }
+
+    #[deprecated(since = "0.41.0", note = "Please use method `get_tx_hash` instead.")]
+    #[cfg(feature = "alloc")]
+    #[inline]
+    pub fn get_tx_hash_legacy(&self) -> crate::types::H256 {
+        A::blockchain_api_impl().get_tx_hash_legacy()
+    }
+
+    #[inline]
+    pub fn get_tx_hash(&self) -> ManagedByteArray<A, 32> {
+        unsafe {
+            let result = ManagedByteArray::new_uninit();
+            A::blockchain_api_impl().load_tx_hash_managed(result.get_handle());
+            result
+        }
+    }
+
+    #[inline]
+    pub fn get_gas_left(&self) -> u64 {
+        A::blockchain_api_impl().get_gas_left()
+    }
+
+    /// Block timestamp, in seconds.
+    #[deprecated(
+        since = "0.63.0",
+        note = "Use get_block_timestamp_seconds instead, it returns a properly typed timestamps"
+    )]
+    #[inline]
+    pub fn get_block_timestamp(&self) -> u64 {
+        A::blockchain_api_impl().get_block_timestamp()
+    }
+
+    /// Block timestamp, in seconds.
+    #[inline]
+    pub fn get_block_timestamp_seconds(&self) -> TimestampSeconds {
+        TimestampSeconds::new(A::blockchain_api_impl().get_block_timestamp())
+    }
+
+    /// Block timestamp, in milliseconds.
+    #[deprecated(
+        since = "0.63.0",
+        note = "Use get_block_timestamp_millis instead, it returns a properly typed timestamps"
+    )]
+    pub fn get_block_timestamp_ms(&self) -> u64 {
+        A::blockchain_api_impl().get_block_timestamp_ms()
+    }
+
+    /// Block timestamp, in milliseconds.
+    pub fn get_block_timestamp_millis(&self) -> TimestampMillis {
+        TimestampMillis::new(A::blockchain_api_impl().get_block_timestamp_ms())
+    }
+
+    #[inline]
+    pub fn get_block_nonce(&self) -> u64 {
+        A::blockchain_api_impl().get_block_nonce()
+    }
+
+    #[inline]
+    pub fn get_block_round(&self) -> u64 {
+        A::blockchain_api_impl().get_block_round()
+    }
+
+    #[inline]
+    pub fn get_block_epoch(&self) -> u64 {
+        A::blockchain_api_impl().get_block_epoch()
+    }
+
+    /// Block round time, in milliseconds.
+    #[deprecated(
+        since = "0.63.0",
+        note = "Use get_block_round_time_millis instead, it returns a properly typed duration"
+    )]
+    #[inline]
+    pub fn get_block_round_time_ms(&self) -> u64 {
+        A::blockchain_api_impl().get_block_round_time_ms()
+    }
+
+    /// Block round time, in milliseconds.
+    #[inline]
+    pub fn get_block_round_time_millis(&self) -> DurationMillis {
+        DurationMillis::new(A::blockchain_api_impl().get_block_round_time_ms())
+    }
+
+    /// Epoch start block timestamp, in milliseconds.
+    #[deprecated(
+        since = "0.63.0",
+        note = "Use epoch_start_block_timestamp_millis instead, it returns a properly typed timestamps"
+    )]
+    pub fn epoch_start_block_timestamp_ms(&self) -> u64 {
+        self.get_epoch_start_block_timestamp_millis()
+            .as_u64_millis()
+    }
+
+    #[deprecated(
+        since = "0.63.1",
+        note = "Renamed to get_epoch_start_block_timestamp_millis"
+    )]
+    pub fn epoch_start_block_timestamp_millis(&self) -> TimestampMillis {
+        self.get_epoch_start_block_timestamp_millis()
+    }
+
+    /// Epoch start block timestamp, in milliseconds.
+    pub fn get_epoch_start_block_timestamp_millis(&self) -> TimestampMillis {
+        TimestampMillis::new(A::blockchain_api_impl().epoch_start_block_timestamp_ms())
+    }
+
+    pub fn get_epoch_start_block_nonce(&self) -> u64 {
+        A::blockchain_api_impl().epoch_start_block_nonce()
+    }
+
+    #[deprecated(since = "0.63.1", note = "Renamed to get_epoch_start_block_nonce")]
+    pub fn epoch_start_block_nonce(&self) -> u64 {
+        self.get_epoch_start_block_nonce()
+    }
+
+    pub fn get_epoch_start_block_round(&self) -> u64 {
+        A::blockchain_api_impl().epoch_start_block_round()
+    }
+
+    #[deprecated(since = "0.63.1", note = "Renamed to get_epoch_start_block_round")]
+    pub fn epoch_start_block_round(&self) -> u64 {
+        self.get_epoch_start_block_round()
+    }
+
+    #[deprecated(
+        since = "0.41.0",
+        note = "Please use method `get_block_random_seed` instead."
+    )]
+    #[cfg(feature = "alloc")]
+    #[inline]
+    pub fn get_block_random_seed_legacy(&self) -> crate::types::Box<[u8; 48]> {
+        crate::types::Box::new(self.get_block_random_seed().to_byte_array())
+    }
+
+    #[inline]
+    pub fn get_block_random_seed(&self) -> ManagedByteArray<A, 48> {
+        unsafe {
+            let result = ManagedByteArray::new_uninit();
+            A::blockchain_api_impl().load_block_random_seed_managed(result.get_handle());
+            result
+        }
+    }
+
+    /// Previous block timestamp, in seconds.
+    #[deprecated(
+        since = "0.63.0",
+        note = "Use get_prev_block_timestamp_seconds instead, it returns a properly typed timestamps"
+    )]
+    #[inline]
+    pub fn get_prev_block_timestamp(&self) -> u64 {
+        A::blockchain_api_impl().get_prev_block_timestamp()
+    }
+
+    /// Previous block timestamp, in seconds.
+    pub fn get_prev_block_timestamp_seconds(&self) -> TimestampSeconds {
+        TimestampSeconds::new(A::blockchain_api_impl().get_prev_block_timestamp())
+    }
+
+    /// Previous block timestamp, in milliseconds.
+    #[deprecated(
+        since = "0.63.0",
+        note = "Use get_prev_block_timestamp_millis instead, it returns a properly typed timestamps"
+    )]
+    #[inline]
+    pub fn get_prev_block_timestamp_ms(&self) -> u64 {
+        A::blockchain_api_impl().get_prev_block_timestamp_ms()
+    }
+
+    /// Previous block timestamp, in milliseconds.
+    #[inline]
+    pub fn get_prev_block_timestamp_millis(&self) -> TimestampMillis {
+        TimestampMillis::new(A::blockchain_api_impl().get_prev_block_timestamp_ms())
+    }
+
+    /// Previous block nonce.
+    #[inline]
+    pub fn get_prev_block_nonce(&self) -> u64 {
+        A::blockchain_api_impl().get_prev_block_nonce()
+    }
+
+    /// Previous block round.
+    #[inline]
+    pub fn get_prev_block_round(&self) -> u64 {
+        A::blockchain_api_impl().get_prev_block_round()
+    }
+
+    #[inline]
+    pub fn get_prev_block_epoch(&self) -> u64 {
+        A::blockchain_api_impl().get_prev_block_epoch()
+    }
+
+    #[deprecated(
+        since = "0.41.0",
+        note = "Please use method `get_prev_block_random_seed` instead."
+    )]
+    #[cfg(feature = "alloc")]
+    #[inline]
+    pub fn get_prev_block_random_seed_legacy(&self) -> crate::types::Box<[u8; 48]> {
+        A::blockchain_api_impl().get_prev_block_random_seed_legacy()
+    }
+
+    #[inline]
+    pub fn get_prev_block_random_seed(&self) -> ManagedByteArray<A, 48> {
+        unsafe {
+            let result = ManagedByteArray::new_uninit();
+            A::blockchain_api_impl().load_prev_block_random_seed_managed(result.get_handle());
+            result
+        }
+    }
+
+    #[inline]
+    pub fn get_current_esdt_nft_nonce(
+        &self,
+        address: &ManagedAddress<A>,
+        token_id: &EsdtTokenIdentifier<A>,
+    ) -> u64 {
+        A::blockchain_api_impl()
+            .get_current_esdt_nft_nonce(address.get_handle(), token_id.get_handle())
+    }
+
+    #[inline]
+    pub fn get_esdt_balance(
+        &self,
+        address: &ManagedAddress<A>,
+        token_id: &EsdtTokenIdentifier<A>,
+        nonce: u64,
+    ) -> BigUint<A> {
+        unsafe {
+            let result = BigUint::new_uninit();
+            A::blockchain_api_impl().load_esdt_balance(
+                address.get_handle(),
+                token_id.get_handle(),
+                nonce,
+                result.get_handle(),
+            );
+            result
+        }
+    }
+}
+
+impl<A> BlockchainWrapper<A>
+where
+    A: ManagedTypeApi + ErrorApi,
+{
+    pub(crate) fn get_native_token_handle(&self) -> A::ManagedBufferHandle {
+        let handle: A::ManagedBufferHandle = use_raw_handle(const_handles::MBUF_EGLD_000000);
+        A::managed_type_impl()
+            .mb_overwrite(handle.clone(), EGLD_000000_TOKEN_IDENTIFIER.as_bytes());
+        handle
+    }
+
+    /// The native token of the given chain. It can currently only return `EGLD-000000`.
+    pub fn get_native_token(&self) -> ManagedRef<'static, A, TokenId<A>> {
+        let handle = self.get_native_token_handle();
+        unsafe { ManagedRef::wrap_handle(handle) }
+    }
+
+    /// Checks if a token is the native one on the chain. Currently only returns true for `EGLD-000000`.
+    pub fn is_native_token(&self, token_id: &TokenId<A>) -> bool {
+        let handle = self.get_native_token_handle();
+        A::managed_type_impl().mb_eq(handle, token_id.buffer.handle.clone())
+    }
+}
+
+impl<A> BlockchainWrapper<A>
+where
+    A: BlockchainApi + ManagedTypeApi + ErrorApi,
+{
+    fn get_esdt_token_type_raw(
+        &self,
+        address: &ManagedAddress<A>,
+        token_id: &EgldOrEsdtTokenIdentifier<A>,
+        nonce: u64,
+    ) -> u64 {
+        unsafe {
+            let big_int_temp_handle: A::BigIntHandle =
+                use_raw_handle(const_handles::BIG_INT_TEMPORARY_1);
+
+            A::blockchain_api_impl().managed_get_esdt_token_type(
+                address.get_handle(),
+                token_id.get_handle(),
+                nonce,
+                big_int_temp_handle.clone(),
+            );
+
+            let bu = ManagedRef::<A, BigUint<A>>::wrap_handle(big_int_temp_handle);
+            bu.to_u64().unwrap_or(255)
+        }
+    }
+
+    pub fn get_esdt_token_type(
+        &self,
+        address: &ManagedAddress<A>,
+        token_id: &EgldOrEsdtTokenIdentifier<A>,
+        nonce: u64,
+    ) -> EsdtTokenType {
+        EsdtTokenType::from(self.get_esdt_token_type_raw(address, token_id, nonce) as u8)
+    }
+
+    pub fn get_esdt_token_data(
+        &self,
+        address: &ManagedAddress<A>,
+        token_id: &EsdtTokenIdentifier<A>,
+        nonce: u64,
+    ) -> EsdtTokenData<A> {
+        // initializing outputs
+        // the current version of VM does not set/overwrite them if the token is missing,
+        // which is why we need to initialize them explicitly
+        let managed_api_impl = A::managed_type_impl();
+        let value_handle = managed_api_impl.bi_new_zero();
+        let properties_handle = managed_api_impl.mb_new_empty(); // TODO: replace with const_handles::MBUF_TEMPORARY_1 after VM fix
+        let hash_handle = managed_api_impl.mb_new_empty();
+        let name_handle = managed_api_impl.mb_new_empty();
+        let attributes_handle = managed_api_impl.mb_new_empty();
+        let creator_handle = managed_api_impl.mb_new_empty();
+        let royalties_handle = managed_api_impl.bi_new_zero();
+        let uris_handle = managed_api_impl.mb_new_empty();
+
+        A::blockchain_api_impl().managed_get_esdt_token_data(
+            address.get_handle().get_raw_handle(),
+            token_id.get_handle().get_raw_handle(),
+            nonce,
+            value_handle.get_raw_handle(),
+            properties_handle.get_raw_handle(),
+            hash_handle.get_raw_handle(),
+            name_handle.get_raw_handle(),
+            attributes_handle.get_raw_handle(),
+            creator_handle.get_raw_handle(),
+            royalties_handle.get_raw_handle(),
+            uris_handle.get_raw_handle(),
+        );
+
+        let token_type = self.get_esdt_token_type(address, token_id.token_id.as_legacy(), nonce);
+
+        if managed_api_impl.mb_len(creator_handle.clone()) == 0 {
+            managed_api_impl.mb_overwrite(creator_handle.clone(), &[0u8; 32][..]);
+        }
+
+        let properties_bytes = load_properties::<A>(properties_handle);
+        let frozen = esdt_is_frozen(&properties_bytes);
+
+        unsafe {
+            EsdtTokenData {
+                token_type,
+                amount: BigUint::from_raw_handle(value_handle.get_raw_handle()),
+                frozen,
+                hash: ManagedBuffer::from_raw_handle(hash_handle.get_raw_handle()),
+                name: ManagedBuffer::from_raw_handle(name_handle.get_raw_handle()),
+                attributes: ManagedBuffer::from_raw_handle(attributes_handle.get_raw_handle()),
+                creator: ManagedAddress::from_raw_handle(creator_handle.get_raw_handle()),
+                royalties: BigUint::from_raw_handle(royalties_handle.get_raw_handle()),
+                uris: ManagedVec::from_raw_handle(uris_handle.get_raw_handle()),
+            }
+        }
+    }
+
+    /// Retrieves back-transfers from the VM, after a contract call.
+    ///
+    /// Works after:
+    /// - synchronous calls
+    /// - asynchronous calls too, in callbacks.
+    #[deprecated(
+        since = "0.59.0",
+        note = "Does not handle multi-transfers properly, use get_back_transfers instead"
+    )]
+    pub fn get_back_transfers_legacy(&self) -> BackTransfersLegacy<A> {
+        let esdt_transfer_value_handle: A::BigIntHandle =
+            use_raw_handle(A::static_var_api_impl().next_handle());
+        let call_value_handle: A::BigIntHandle =
+            use_raw_handle(A::static_var_api_impl().next_handle());
+
+        A::blockchain_api_impl().managed_get_back_transfers(
+            esdt_transfer_value_handle.get_raw_handle(),
+            call_value_handle.get_raw_handle(),
+        );
+
+        unsafe {
+            BackTransfersLegacy {
+                total_egld_amount: BigUint::from_raw_handle(call_value_handle.get_raw_handle()),
+                esdt_payments: ManagedVec::from_raw_handle(
+                    esdt_transfer_value_handle.get_raw_handle(),
+                ),
+            }
+        }
+    }
+
+    /// Retrieves all back-transfers as a collection of payments.
+    ///
+    /// Covers all cases, including EGLD sent via multi-transfer.
+    pub fn get_back_transfers(&self) -> BackTransfers<A> {
+        unsafe {
+            let mut all_bt_vec = ManagedVec::new_uninit();
+            let bt_direct_egld = BigUint::<A>::new_uninit();
+
+            A::blockchain_api_impl().managed_get_back_transfers(
+                all_bt_vec.get_raw_handle_unchecked(),
+                bt_direct_egld.get_raw_handle_unchecked(),
+            );
+
+            if bt_direct_egld > 0u64 {
+                all_bt_vec.push(EgldOrEsdtTokenPayment::egld_payment(bt_direct_egld));
+            }
+
+            BackTransfers::new(all_bt_vec)
+        }
+    }
+
+    /// Clears back transfers by retrieving current back transfers and ignoring result.
+    pub fn reset_back_transfers(&self) {
+        A::blockchain_api_impl().managed_get_back_transfers(
+            const_handles::MBUF_TEMPORARY_1,
+            const_handles::BIG_INT_TEMPORARY_1,
+        );
+    }
+
+    /// Retrieves and deserializes token attributes from the SC account, with given token identifier and nonce.
+    pub fn get_token_attributes<T: TopDecode>(
+        &self,
+        token_id: &EsdtTokenIdentifier<A>,
+        token_nonce: u64,
+    ) -> T {
+        let own_sc_address = self.get_sc_address();
+        let token_data = self.get_esdt_token_data(&own_sc_address, token_id, token_nonce);
+        token_data.decode_attributes()
+    }
+
+    #[inline]
+    pub fn is_esdt_frozen(
+        &self,
+        address: &ManagedAddress<A>,
+        token_id: &EsdtTokenIdentifier<A>,
+        nonce: u64,
+    ) -> bool {
+        A::blockchain_api_impl().check_esdt_frozen(
+            address.get_handle(),
+            token_id.get_handle(),
+            nonce,
+        )
+    }
+
+    #[inline]
+    pub fn is_esdt_paused(&self, token_id: &EsdtTokenIdentifier<A>) -> bool {
+        A::blockchain_api_impl().check_esdt_paused(token_id.get_handle())
+    }
+
+    #[inline]
+    pub fn is_esdt_limited_transfer(&self, token_id: &EsdtTokenIdentifier<A>) -> bool {
+        A::blockchain_api_impl().check_esdt_limited_transfer(token_id.get_handle())
+    }
+
+    #[inline]
+    pub fn get_esdt_local_roles(&self, token_id: &EsdtTokenIdentifier<A>) -> EsdtLocalRoleFlags {
+        A::blockchain_api_impl().load_esdt_local_roles(token_id.get_handle())
+    }
+}
+
+impl<A> BlockchainWrapper<A>
+where
+    A: BlockchainApi + StorageReadApi + ManagedTypeApi + ErrorApi,
+{
+    /// Retrieves validator rewards, as set by the protocol.
+    #[inline]
+    pub fn get_cumulated_validator_rewards(&self) -> BigUint<A> {
+        let temp_handle_1: A::ManagedBufferHandle = use_raw_handle(const_handles::MBUF_TEMPORARY_1);
+        let temp_handle_2: A::ManagedBufferHandle = use_raw_handle(const_handles::MBUF_TEMPORARY_2);
+
+        // prepare key
+        A::managed_type_impl().mb_overwrite(
+            temp_handle_1.clone(),
+            storage::protected_keys::ELROND_REWARD_KEY,
+        );
+
+        // load value
+        A::storage_read_api_impl()
+            .storage_load_managed_buffer_raw(temp_handle_1, temp_handle_2.clone());
+
+        // convert value to BigUint
+        let result = unsafe { BigUint::new_uninit() };
+        A::managed_type_impl().mb_to_big_int_unsigned(temp_handle_2, result.get_handle());
+        result
+    }
+
+    pub fn token_has_transfer_role(&self, token_identifier: EsdtTokenIdentifier<A>) -> bool {
+        // Prepare key
+        let key_handle: A::ManagedBufferHandle = use_raw_handle(const_handles::MBUF_TEMPORARY_1);
+        A::managed_type_impl().mb_overwrite(key_handle.clone(), b"ELRONDtransferesdt");
+
+        // Append token identifier
+        A::managed_type_impl().mb_append(
+            key_handle.clone(),
+            token_identifier.into_managed_buffer().get_handle(),
+        );
+
+        // Prepare result
+        let result_handle: A::ManagedBufferHandle = use_raw_handle(const_handles::MBUF_TEMPORARY_2);
+
+        // Read storage from address
+        A::storage_read_api_impl().storage_load_from_address(
+            SystemSCAddress.to_managed_address::<A>().get_handle(),
+            key_handle,
+            result_handle.clone(),
+        );
+
+        let result = unsafe { ManagedRef::<A, ManagedBuffer<A>>::wrap_handle(result_handle) };
+
+        // Decoding the response needs more research
+        // Empty response means no address has transferRole for the token
+        !result.is_empty()
+    }
+}
+
+fn load_properties<A: ManagedTypeApi>(properties_handle: A::ManagedBufferHandle) -> [u8; 2] {
+    let mut properties_bytes = [0u8; 2];
+    if A::managed_type_impl().mb_len(properties_handle.clone()) == 2 {
+        let _ =
+            A::managed_type_impl().mb_load_slice(properties_handle, 0, &mut properties_bytes[..]);
+    }
+    properties_bytes
+}
+
+fn esdt_is_frozen(properties_bytes: &[u8; 2]) -> bool {
+    properties_bytes[0] > 0 // token is frozen if the first byte is 1
+}
