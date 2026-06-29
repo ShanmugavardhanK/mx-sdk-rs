@@ -11,7 +11,7 @@
             "id": "tx-end-auction-early-after-second-bid-max",
             "tx": {
                 "from": "address:bidder2",
-                "to": "sc:kitty_auction",
+                "to": "sc:kitty_auction_contract",
                 "function": "endAuction",
                 "arguments": [
                     "1"
@@ -50,7 +50,7 @@
                     "nonce": "0",
                     "balance": "0",
                     "storage": {
-                        "str:kittyAuctionContractAddress": "sc:kitty_auction",
+                        "str:kittyAuctionContractAddress": "sc:kitty_auction_contract",
                         "str:totalKitties": "2",
                         "str:kitty|u32:0": "u8:0|u8:0|u8:0|u8:0|u8:0|u8:0|u8:0|u64:0|u64:0|u32:0|u32:0|u32:0|u16:0|u16:0",
                         "str:kitty|u32:1": "u8:1|u8:2|u8:3|u8:4|u8:5|u8:6|u8:7|u64:123456|u64:0|u32:0|u32:0|u32:0|u16:0|u16:0",
@@ -59,7 +59,7 @@
                     },
                     "code": "mxsc:../../kitty-ownership/output/kitty-ownership.mxsc.json"
                 },
-                "sc:kitty_auction": {
+                "sc:kitty_auction_contract": {
                     "nonce": "0",
                     "balance": "500",
                     "storage": {
