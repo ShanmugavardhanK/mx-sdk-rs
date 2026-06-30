@@ -37,10 +37,7 @@ fn iot_signature<M: ManagedTypeApi>(
     period_end: u64,
     data_cid: &[u8],
     source_timestamp: u64,
-) -> ManagedBuffer<M>
-where
-    M: ManagedTypeApi,
-{
+) -> ManagedBuffer<M> {
     let signing_key = SigningKey::from_bytes(&TEST_DEVICE_SECRET);
     let payload = oracle_reading_signature_payload(
         device,
@@ -75,6 +72,7 @@ fn oracle_reading_signature_payload(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 fn oracle_reading_signature_payload_for_sc(
     sc_address: &[u8],
     device: TestAddress,
@@ -107,10 +105,7 @@ fn iot_signature_for_sc<M: ManagedTypeApi>(
     period_end: u64,
     data_cid: &[u8],
     source_timestamp: u64,
-) -> ManagedBuffer<M>
-where
-    M: ManagedTypeApi,
-{
+) -> ManagedBuffer<M> {
     let signing_key = SigningKey::from_bytes(&TEST_DEVICE_SECRET);
     let payload = oracle_reading_signature_payload_for_sc(
         sc_address,

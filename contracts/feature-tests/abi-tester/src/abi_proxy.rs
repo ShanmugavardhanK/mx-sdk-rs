@@ -602,11 +602,25 @@ pub struct AbiManagedVecItem {
 #[derive(
     NestedEncode, NestedDecode, TopEncode, TopDecode, ManagedVecItem, Clone, PartialEq, Eq, Debug,
 )]
-pub struct AbiManagedComplexVecItem<M: ManagedTypeApi> {
-    pub token_id: ManagedBuffer<M>,
-    pub holder: ManagedAddress<M>,
+pub struct AbiManagedComplexVecItem<Api>
+where
+    Api: ManagedTypeApi,
+{
+    pub token_id: ManagedBuffer<Api>,
+    pub holder: ManagedAddress<Api>,
     pub version: u64,
-    pub body: ManagedBuffer<M>,
+    pub body: ManagedBuffer<Api>,
+}
+
+#[type_abi]
+#[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, Clone, PartialEq, Eq, Debug)]
+pub struct AbiEnvelope<Api>
+where
+    Api: ManagedTypeApi,
+{
+    pub domain: AbiEnvelopeDomain,
+    pub payload_hash: ManagedBuffer<Api>,
+    pub operations: ManagedVec<Api, AbiManagedComplexVecItem<Api>>,
 }
 
 #[type_abi]
@@ -616,14 +630,6 @@ pub struct AbiManagedComplexVecItem<M: ManagedTypeApi> {
 pub enum AbiEnvelopeDomain {
     Alpha,
     Beta,
-}
-
-#[type_abi]
-#[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, Clone, PartialEq, Eq, Debug)]
-pub struct AbiEnvelope<M: ManagedTypeApi> {
-    pub domain: AbiEnvelopeDomain,
-    pub payload_hash: ManagedBuffer<M>,
-    pub operations: ManagedVec<M, AbiManagedComplexVecItem<M>>,
 }
 
 #[type_abi]

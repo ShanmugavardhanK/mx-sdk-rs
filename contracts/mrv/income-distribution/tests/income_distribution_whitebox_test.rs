@@ -9,8 +9,7 @@ const GOVERNANCE: TestAddress = TestAddress::new("governance");
 const SC_ADDRESS: TestSCAddress = TestSCAddress::new("mrv-income-distribution");
 const GOVERNANCE_SC: TestSCAddress = TestSCAddress::new("mrv-governance");
 const CODE_PATH: MxscPath = MxscPath::new("output/mrv-income-distribution.mxsc.json");
-const GOVERNANCE_CODE: MxscPath =
-    MxscPath::new("../../governance/output/mrv-governance.mxsc.json");
+const GOVERNANCE_CODE: MxscPath = MxscPath::new("../../governance/output/mrv-governance.mxsc.json");
 const COME_TOKEN: TestTokenIdentifier = TestTokenIdentifier::new("COME-abcdef");
 const WRONG_TOKEN: TestTokenIdentifier = TestTokenIdentifier::new("FAKE-123456");
 const SIGNER_ONE: TestAddress = TestAddress::new("signer-one");

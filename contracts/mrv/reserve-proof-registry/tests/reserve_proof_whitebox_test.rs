@@ -16,11 +16,9 @@ const GOVERNANCE_SC: TestSCAddress = TestSCAddress::new("mrv-governance");
 
 const CARBON_CODE: MxscPath =
     MxscPath::new("../../carbon-credit/output/mrv-carbon-credit.mxsc.json");
-const BUFFER_CODE: MxscPath =
-    MxscPath::new("../../buffer-pool/output/mrv-buffer-pool.mxsc.json");
+const BUFFER_CODE: MxscPath = MxscPath::new("../../buffer-pool/output/mrv-buffer-pool.mxsc.json");
 const RESERVE_CODE: MxscPath = MxscPath::new("output/mrv-reserve-proof-registry.mxsc.json");
-const GOVERNANCE_CODE: MxscPath =
-    MxscPath::new("../../governance/output/mrv-governance.mxsc.json");
+const GOVERNANCE_CODE: MxscPath = MxscPath::new("../../governance/output/mrv-governance.mxsc.json");
 
 const DVCU_TOKEN: TestTokenIdentifier = TestTokenIdentifier::new("DVCU-123456");
 const DGSC_TOKEN: TestTokenIdentifier = TestTokenIdentifier::new("DGSC-123456");
