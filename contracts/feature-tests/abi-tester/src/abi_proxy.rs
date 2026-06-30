@@ -599,9 +599,7 @@ pub struct AbiManagedVecItem {
 }
 
 #[type_abi]
-#[derive(
-    NestedEncode, NestedDecode, TopEncode, TopDecode, ManagedVecItem, Clone, PartialEq, Eq, Debug,
-)]
+#[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, ManagedVecItem, Clone, PartialEq, Eq, Debug)]
 pub struct AbiManagedComplexVecItem<Api>
 where
     Api: ManagedTypeApi,
@@ -624,9 +622,7 @@ where
 }
 
 #[type_abi]
-#[derive(
-    NestedEncode, NestedDecode, TopEncode, TopDecode, ManagedVecItem, Clone, PartialEq, Eq, Debug,
-)]
+#[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, ManagedVecItem, Clone, PartialEq, Eq, Debug)]
 pub enum AbiEnvelopeDomain {
     Alpha,
     Beta,

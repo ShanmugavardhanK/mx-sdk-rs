@@ -27,8 +27,8 @@ version = "=0.5.1"
 [dependencies.multiversx-chain-vm-executor-wasmer]
 version = "=0.5.1"
 default-features = false
-git = "https://github.com/multiversx/mx-vm-executor-rs"
-rev = "4af36a92fc0c883eabd391389877ef3d6b8e67b3"
+git = "https://github.com/xorewa/mx-vm-executor-rs"
+rev = "1e87b8f34074954f7b3e0d5665de6fd1c4cc6d9c"
 
 [workspace]
 members = ["."]
