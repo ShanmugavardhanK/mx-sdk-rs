@@ -504,12 +504,14 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct OnlyShowsUpInConstructor {
     pub something: (),
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct AbiTestType {
     pub nested: OnlyShowsUpAsNested01,
@@ -518,10 +520,12 @@ pub struct AbiTestType {
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct OnlyShowsUpAsNested01 {}
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct OnlyShowsUpAsNested02 {
     pub something: [u8; 0],
@@ -529,6 +533,7 @@ pub struct OnlyShowsUpAsNested02 {
 
 #[rustfmt::skip]
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub enum AbiEnum {
     Nothing,
@@ -541,14 +546,17 @@ pub enum AbiEnum {
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct OnlyShowsUpAsNested08 {}
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct OnlyShowsUpAsNested09 {}
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct AbiManagedType<Api>
 where
@@ -560,38 +568,47 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct OnlyShowsUpAsNested03 {}
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct OnlyShowsUpAsNested04 {}
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct OnlyShowsUpAsNested05 {}
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct OnlyShowsUpAsNested06 {}
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct OnlyShowsUpAsNested07 {}
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct OnlyShowsUpAsNestedInSingleValueMapper {}
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct OnlyShowsUpAsNestedInVec {}
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct OnlyShowsUpAsNestedInArrayVec {}
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, ManagedVecItem)]
 pub struct AbiManagedVecItem {
     pub value1: u32,
@@ -599,6 +616,7 @@ pub struct AbiManagedVecItem {
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, ManagedVecItem, Clone, PartialEq, Eq, Debug)]
 pub struct AbiManagedComplexVecItem<Api>
 where
@@ -611,6 +629,7 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, Clone, PartialEq, Eq, Debug)]
 pub struct AbiEnvelope<Api>
 where
@@ -622,6 +641,7 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, ManagedVecItem, Clone, PartialEq, Eq, Debug)]
 pub enum AbiEnvelopeDomain {
     Alpha,
@@ -629,34 +649,42 @@ pub enum AbiEnvelopeDomain {
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, NestedDecode, NestedEncode, TopEncode, TopDecode)]
 pub struct Permission(u32);
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct OnlyShowsUpAsNestedInArray {}
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct OnlyShowsUpAsNestedInBox {}
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct OnlyShowsUpAsNestedInBoxedSlice {}
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct OnlyShowsUpAsNestedInRef {}
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct OnlyShowsUpAsNestedInSlice {}
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct OnlyShowsUpAsNestedInOption {}
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct AbiWithManagedBufferReadToEnd<Api>
 where
@@ -668,16 +696,19 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(TopEncode, TopDecode)]
 pub struct OnlyShowsUpInEsdtAttr {
     pub field: OnlyShowsUpAsNested10,
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct OnlyShowsUpAsNested10 {}
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub enum ExplicitDiscriminant {
     Zero,
@@ -690,6 +721,7 @@ pub enum ExplicitDiscriminant {
 #[rustfmt::skip]
 #[repr(u8)]
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub enum ExplicitDiscriminantMixed {
     Zero,
@@ -703,6 +735,7 @@ pub enum ExplicitDiscriminantMixed {
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(TopEncode, TopDecode)]
 pub struct ManagedDecimalWrapper<Api>
 where

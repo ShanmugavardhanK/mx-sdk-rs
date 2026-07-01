@@ -149,6 +149,7 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(TopEncode, TopDecode, PartialEq, Eq, Clone, Copy, Debug)]
 pub enum Status {
     FundingPeriod,

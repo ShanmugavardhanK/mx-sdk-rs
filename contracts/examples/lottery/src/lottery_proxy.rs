@@ -178,6 +178,7 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, PartialEq)]
 pub enum AwardingStatus {
     Ongoing,
@@ -185,6 +186,7 @@ pub enum AwardingStatus {
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(TopEncode, TopDecode, PartialEq, Eq, Clone, Copy)]
 pub enum Status {
     Inactive,
@@ -193,6 +195,7 @@ pub enum Status {
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct LotteryInfo<Api>
 where

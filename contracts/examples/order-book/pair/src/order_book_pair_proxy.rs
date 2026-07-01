@@ -214,6 +214,7 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(TopEncode, TopDecode, Clone)]
 pub struct OrderInputParams<Api>
 where
@@ -226,6 +227,7 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(ManagedVecItem, TopEncode, TopDecode, NestedEncode, NestedDecode, Clone)]
 pub struct FeeConfig<Api>
 where
@@ -237,6 +239,7 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(ManagedVecItem, TopEncode, TopDecode, NestedEncode, NestedDecode, Clone)]
 pub enum FeeConfigEnum {
     Fixed,
@@ -244,12 +247,14 @@ pub enum FeeConfigEnum {
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(ManagedVecItem, TopEncode, TopDecode, NestedEncode, NestedDecode, Clone, Default)]
 pub struct DealConfig {
     pub match_provider_percent: u64,
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(ManagedVecItem, TopEncode, TopDecode, NestedEncode, NestedDecode, Clone)]
 pub struct Order<Api>
 where
@@ -267,6 +272,7 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[rustfmt::skip]
 #[derive(ManagedVecItem, TopEncode, TopDecode, NestedEncode, NestedDecode, PartialEq, Eq, Clone, Copy)]
 pub enum OrderType {
