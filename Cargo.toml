@@ -258,5 +258,5 @@ members = [
 ]
 
 [patch.crates-io]
-multiversx-chain-vm-executor = { git = "https://github.com/xorewa/mx-vm-executor-rs", rev = "1e87b8f34074954f7b3e0d5665de6fd1c4cc6d9c" }
-multiversx-chain-vm-executor-wasmer-experimental = { git = "https://github.com/xorewa/mx-vm-executor-rs", rev = "1e87b8f34074954f7b3e0d5665de6fd1c4cc6d9c" }
+multiversx-chain-vm-executor = { git = "https://github.com/xorewa/mx-vm-executor-rs", rev = "c998a4531f45aa983f4a37ebfe3f4637e3a65fe8" }
+multiversx-chain-vm-executor-wasmer-experimental = { git = "https://github.com/xorewa/mx-vm-executor-rs", rev = "c998a4531f45aa983f4a37ebfe3f4637e3a65fe8" }
