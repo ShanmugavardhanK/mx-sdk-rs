@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use multiversx_chain_core::types::ReturnCode;
 use multiversx_chain_vm_executor::{
-    BreakpointValue, Executor, InstanceState, OpcodeCost, VMHooksEarlyExit, VMHooksLegacy,
+    BreakpointValueLegacy, Executor, InstanceState, OpcodeCost, VMHooksEarlyExit, VMHooksLegacy,
     VMHooksLegacyAdapter,
 };
 use multiversx_chain_vm_executor_wasmer::new_traits::{
@@ -26,7 +26,10 @@ pub fn new_prod_executor(runtime_ref: RuntimeWeakRef) -> Box<dyn Executor + Send
 pub struct RuntimeRefAdapter(RuntimeWeakRef);
 
 impl WasmerProdRuntimeRef for RuntimeRefAdapter {
-    fn vm_hooks(&self, instance_state: WasmerProdInstanceState) -> Box<dyn VMHooksLegacy> {
+    fn vm_hooks(
+        &self,
+        instance_state: WasmerProdInstanceState,
+    ) -> Box<dyn VMHooksLegacy> {
         let runtime = self.0.upgrade();
         let tx_context_ref = runtime.get_executor_context();
         let instance_state_adapter = WasmerProdInstanceStateAdapter(instance_state);
@@ -96,9 +99,10 @@ impl InstanceStateSetEarlyExit for WasmerProdInstanceStateAdapter {
     }
 }
 
-fn early_exit_to_breakpoint_value(early_exit: &VMHooksEarlyExit) -> BreakpointValue {
+fn early_exit_to_breakpoint_value(early_exit: &VMHooksEarlyExit) -> BreakpointValueLegacy {
     match ReturnCode::from_u64(early_exit.code) {
-        Some(ReturnCode::OutOfGas) => BreakpointValue::OutOfGas,
-        _ => BreakpointValue::OutOfGas,
+        Some(ReturnCode::OutOfGas) => BreakpointValueLegacy::OutOfGas,
+        Some(ReturnCode::UserError) => BreakpointValueLegacy::SignalError,
+        _ => BreakpointValueLegacy::ExecutionFailed,
     }
 }

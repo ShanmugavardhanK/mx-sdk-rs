@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - NewArc
+      - vm-exe-test
   pull_request:
 
 permissions:
