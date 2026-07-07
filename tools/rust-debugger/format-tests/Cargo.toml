@@ -9,15 +9,15 @@ name = "format-tests"
 path = "src/format_tests.rs"
 
 [dependencies.multiversx-sc]
-version = "=0.66.1"
+version = "=0.66.2"
 path = "../../../framework/base"
 
 [dependencies.multiversx-sc-scenario]
-version = "=0.66.1"
+version = "=0.66.2"
 path = "../../../framework/scenario"
 
 [dependencies.multiversx-chain-vm]
-version = "=0.23.0"
+version = "=0.23.1"
 path = "../../../chain/vm"
 
 [dependencies]
@@ -29,4 +29,6 @@ glob = "0.3"
 [workspace]
 members = ["."]
 
-
+[patch.crates-io]
+multiversx-chain-vm-executor = { git = "https://github.com/Layavardhan011/mx-vm-executor", rev = "26a5f95c74b1130b6caadb3ccffbaf3955d44175" }
+multiversx-chain-vm-executor-wasmer-experimental = { git = "https://github.com/Layavardhan011/mx-vm-executor", rev = "26a5f95c74b1130b6caadb3ccffbaf3955d44175" }

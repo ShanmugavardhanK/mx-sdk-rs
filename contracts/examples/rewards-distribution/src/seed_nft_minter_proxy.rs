@@ -191,6 +191,7 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(ManagedVecItem, NestedEncode, NestedDecode)]
 pub struct Distribution<Api>
 where

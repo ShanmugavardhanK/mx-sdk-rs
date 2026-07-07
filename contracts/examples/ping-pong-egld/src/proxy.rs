@@ -242,6 +242,7 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(TopEncode, TopDecode, Default)]
 pub struct ContractState<Api>
 where
@@ -255,6 +256,7 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(TopEncode, TopDecode, PartialEq, Eq, Clone, Copy)]
 pub enum UserStatus {
     New,

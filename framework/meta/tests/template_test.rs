@@ -129,6 +129,23 @@ fn setup_template_test_current(
     )
     .create_contract(LAST_TEMPLATE_VERSION);
 
+    let cargo_toml_path = target.contract_dir().join("Cargo.toml");
+    if cargo_toml_path.exists() {
+        use std::io::Write;
+        let mut file = std::fs::OpenOptions::new()
+            .append(true)
+            .open(cargo_toml_path)
+            .unwrap();
+        writeln!(
+            file,
+            r#"
+[patch.crates-io]
+multiversx-chain-vm-executor = {{ git = "https://github.com/Layavardhan011/mx-vm-executor", rev = "26a5f95c74b1130b6caadb3ccffbaf3955d44175" }}
+multiversx-chain-vm-executor-wasmer-experimental = {{ git = "https://github.com/Layavardhan011/mx-vm-executor", rev = "26a5f95c74b1130b6caadb3ccffbaf3955d44175" }}
+"#
+        ).unwrap();
+    }
+
     target
 }
 

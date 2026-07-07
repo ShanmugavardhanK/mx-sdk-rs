@@ -684,8 +684,10 @@ where
             .collect();
 
         if derive_attrs.is_empty() {
+            self.writeln("#[rustfmt::skip]");
             self.writeln("#[derive(TopEncode, TopDecode)]");
         } else {
+            self.writeln("#[rustfmt::skip]");
             self.writeln(format!("#[derive({})]", derive_attrs.join(", ")));
         }
     }

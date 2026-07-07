@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - master
+      - NewArc
+      - MyDev
   pull_request:
 
 permissions:
@@ -36,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        toolchain: ["1.92", "1.85"]
+        toolchain: ["1.96", "1.85"]
     steps:
       - name: Checkout code
         uses: actions/checkout@v5

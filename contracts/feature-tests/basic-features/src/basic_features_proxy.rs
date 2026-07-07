@@ -376,11 +376,13 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(Clone, Copy)]
 pub struct CodecErrorTestType {}
 
 #[rustfmt::skip]
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub enum ExampleEnumWithFields {
     Unit,
@@ -392,6 +394,7 @@ pub enum ExampleEnumWithFields {
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub enum ExampleEnumSimple {
     Variant0,
@@ -400,6 +403,7 @@ pub enum ExampleEnumSimple {
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(TopEncode, TopDecode, NestedEncode, NestedDecode)]
 pub struct TokenAttributesStruct<Api>
 where
@@ -411,6 +415,7 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(TopEncode, TopDecode)]
 pub struct RgbColor {
     pub r: u8,
@@ -419,6 +424,7 @@ pub struct RgbColor {
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, PartialEq, Eq, Debug, Clone)]
 pub struct ExampleStructManaged<Api>
 where

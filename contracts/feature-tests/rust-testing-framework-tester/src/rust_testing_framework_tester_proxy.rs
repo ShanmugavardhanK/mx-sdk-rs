@@ -54,6 +54,7 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(TopEncode, TopDecode, Clone, Debug, PartialEq, Eq)]
 pub struct NftDummyAttributes {
     pub creation_epoch: u64,

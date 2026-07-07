@@ -38,10 +38,8 @@ const POLICY_CODE: MxscPath =
     MxscPath::new("policy-registry/output/drwa-policy-registry.mxsc.json");
 const IDENTITY_CODE: MxscPath =
     MxscPath::new("identity-registry/output/drwa-identity-registry.mxsc.json");
-const ASSET_CODE: MxscPath =
-    MxscPath::new("asset-manager/output/drwa-asset-manager.mxsc.json");
-const ATTESTATION_CODE: MxscPath =
-    MxscPath::new("attestation/output/drwa-attestation.mxsc.json");
+const ASSET_CODE: MxscPath = MxscPath::new("asset-manager/output/drwa-asset-manager.mxsc.json");
+const ATTESTATION_CODE: MxscPath = MxscPath::new("attestation/output/drwa-attestation.mxsc.json");
 
 const TOKEN_ID: &[u8] = b"CARBON-ab12cd";
 const POLICY_ID: &[u8] = TOKEN_ID;

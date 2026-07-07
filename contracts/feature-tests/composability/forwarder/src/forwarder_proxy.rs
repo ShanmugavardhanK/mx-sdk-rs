@@ -1735,6 +1735,7 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(TopEncode, TopDecode, Clone, Copy, PartialEq, Debug, Default)]
 pub struct Color {
     pub r: u8,
@@ -1743,6 +1744,7 @@ pub struct Color {
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(TopEncode, TopDecode, Debug)]
 pub struct CallbackData<Api>
 where

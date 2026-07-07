@@ -13,9 +13,14 @@ path = "src/interactor_main.rs"
 path = ".."
 
 [dependencies.multiversx-sc-snippets]
-version = "0.66.1"
+version = "0.66.2"
 path = "../../../../framework/snippets"
 
 # [workspace]
 
 
+
+
+[patch.crates-io]
+multiversx-chain-vm-executor = { git = "https://github.com/Layavardhan011/mx-vm-executor", rev = "26a5f95c74b1130b6caadb3ccffbaf3955d44175" }
+multiversx-chain-vm-executor-wasmer-experimental = { git = "https://github.com/Layavardhan011/mx-vm-executor", rev = "26a5f95c74b1130b6caadb3ccffbaf3955d44175" }

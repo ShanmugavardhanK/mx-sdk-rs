@@ -406,6 +406,7 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(TopEncode)]
 pub struct ActionFullInfo<Api>
 where
@@ -418,6 +419,7 @@ where
 
 #[rustfmt::skip]
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, Clone)]
 pub enum Action<Api>
 where
@@ -446,6 +448,7 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, Clone)]
 pub struct CallActionData<Api>
 where
@@ -458,6 +461,7 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(TopEncode, TopDecode, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum UserRole {
     None,

@@ -11,8 +11,7 @@ const SIGNER_TWO: TestAddress = TestAddress::new("signer-two");
 const SC_ADDRESS: TestSCAddress = TestSCAddress::new("mrv-atomic-swap");
 const GOVERNANCE_SC: TestSCAddress = TestSCAddress::new("mrv-governance");
 const CODE_PATH: MxscPath = MxscPath::new("output/mrv-atomic-swap.mxsc.json");
-const GOVERNANCE_CODE: MxscPath =
-    MxscPath::new("../../governance/output/mrv-governance.mxsc.json");
+const GOVERNANCE_CODE: MxscPath = MxscPath::new("../../governance/output/mrv-governance.mxsc.json");
 
 macro_rules! allow_dvcu_token {
     ($sc:expr) => {

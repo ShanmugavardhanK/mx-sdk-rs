@@ -381,6 +381,7 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct PriceFeed<Api>
 where
@@ -395,6 +396,7 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(TopEncode)]
 pub struct NewRoundEvent<Api>
 where
@@ -408,6 +410,7 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(TopEncode)]
 pub struct DiscardSubmissionEvent {
     pub submission_timestamp: TimestampSeconds,

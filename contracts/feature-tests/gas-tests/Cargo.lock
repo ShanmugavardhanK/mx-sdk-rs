@@ -133,6 +133,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "base64"
+version = "0.22.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
+
+[[package]]
 name = "base64ct"
 version = "1.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1364,11 +1370,13 @@ checksum = "7843ec2de400bcbc6a6328c958dc38e5359da6e93e72e37bc5246bf1ae776389"
 
 [[package]]
 name = "multiversx-chain-core"
-version = "0.22.1"
+version = "0.23.1"
 dependencies = [
+ "base64",
  "bech32",
  "bitflags 2.11.1",
  "blake2",
+ "ed25519-dalek",
  "hex",
  "multiversx-sc-codec",
  "serde",
@@ -1378,7 +1386,7 @@ dependencies = [
 
 [[package]]
 name = "multiversx-chain-scenario-format"
-version = "0.26.0"
+version = "0.26.1"
 dependencies = [
  "bech32",
  "hex",
@@ -1391,12 +1399,11 @@ dependencies = [
 
 [[package]]
 name = "multiversx-chain-vm"
-version = "0.22.1"
+version = "0.23.1"
 dependencies = [
  "anyhow",
  "bitflags 2.11.1",
  "colored",
- "ed25519-dalek",
  "hex",
  "itertools 0.14.0",
  "log",
@@ -1414,8 +1421,7 @@ dependencies = [
 [[package]]
 name = "multiversx-chain-vm-executor"
 version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b72af69cd251075c0bc020ea72f0d2056ac0966fc17aced17b866a5324536e28"
+source = "git+https://github.com/Layavardhan011/mx-vm-executor?rev=26a5f95c74b1130b6caadb3ccffbaf3955d44175#26a5f95c74b1130b6caadb3ccffbaf3955d44175"
 dependencies = [
  "serde",
 ]
@@ -1423,7 +1429,7 @@ dependencies = [
 [[package]]
 name = "multiversx-chain-vm-executor-wasmer"
 version = "0.5.1"
-source = "git+https://github.com/multiversx/mx-vm-executor-rs?rev=4af36a92fc0c883eabd391389877ef3d6b8e67b3#4af36a92fc0c883eabd391389877ef3d6b8e67b3"
+source = "git+https://github.com/Layavardhan011/mx-vm-executor?rev=26a5f95c74b1130b6caadb3ccffbaf3955d44175#26a5f95c74b1130b6caadb3ccffbaf3955d44175"
 dependencies = [
  "log",
  "loupe",
@@ -1437,8 +1443,7 @@ dependencies = [
 [[package]]
 name = "multiversx-chain-vm-executor-wasmer-experimental"
 version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9a714b389463294ca1f9c8895804a6a2bac11b9609aaeabe633cfb033ac62f7"
+source = "git+https://github.com/Layavardhan011/mx-vm-executor?rev=26a5f95c74b1130b6caadb3ccffbaf3955d44175#26a5f95c74b1130b6caadb3ccffbaf3955d44175"
 dependencies = [
  "log",
  "loupe",
@@ -1462,7 +1467,7 @@ dependencies = [
 
 [[package]]
 name = "multiversx-sc"
-version = "0.65.1"
+version = "0.66.2"
 dependencies = [
  "bitflags 2.11.1",
  "generic-array 1.4.1",
@@ -1497,7 +1502,7 @@ dependencies = [
 
 [[package]]
 name = "multiversx-sc-derive"
-version = "0.65.1"
+version = "0.66.2"
 dependencies = [
  "hex",
  "proc-macro2",
@@ -1508,7 +1513,7 @@ dependencies = [
 
 [[package]]
 name = "multiversx-sc-meta-lib"
-version = "0.65.1"
+version = "0.66.2"
 dependencies = [
  "clap",
  "colored",
@@ -1529,7 +1534,7 @@ dependencies = [
 
 [[package]]
 name = "multiversx-sc-scenario"
-version = "0.65.1"
+version = "0.66.2"
 dependencies = [
  "colored",
  "hex",

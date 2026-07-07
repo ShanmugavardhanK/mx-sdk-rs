@@ -55,10 +55,12 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct LargeBoxedByteArray(Box<[u8; 512]>);
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode)]
 pub struct StructExampleAlloc {
     pub int: u16,
