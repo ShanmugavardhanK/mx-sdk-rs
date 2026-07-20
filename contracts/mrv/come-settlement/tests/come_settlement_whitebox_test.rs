@@ -11,8 +11,7 @@ const BUYER: TestAddress = TestAddress::new("buyer");
 const SC_ADDRESS: TestSCAddress = TestSCAddress::new("mrv-come-settlement");
 const GOVERNANCE_SC: TestSCAddress = TestSCAddress::new("mrv-governance");
 const CODE_PATH: MxscPath = MxscPath::new("output/mrv-come-settlement.mxsc.json");
-const GOVERNANCE_CODE: MxscPath =
-    MxscPath::new("../../governance/output/mrv-governance.mxsc.json");
+const GOVERNANCE_CODE: MxscPath = MxscPath::new("../../governance/output/mrv-governance.mxsc.json");
 const SIGNER_ONE: TestAddress = TestAddress::new("signer-one");
 const SIGNER_TWO: TestAddress = TestAddress::new("signer-two");
 

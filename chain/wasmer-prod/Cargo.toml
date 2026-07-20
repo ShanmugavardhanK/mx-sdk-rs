@@ -13,12 +13,12 @@ path = "src/wasmer_prod.rs"
 home = "=0.5.1" # downgrading, >= 0.5.2 requires rustc 1.88
 
 [dependencies.multiversx-chain-core]
-version = "=0.23.0"
+version = "=0.23.1"
 path = "../core"
 
 
 [dependencies.multiversx-chain-vm]
-version = "=0.23.0"
+version = "=0.23.1"
 path = "../vm"
 
 [dependencies.multiversx-chain-vm-executor]
@@ -27,8 +27,12 @@ version = "=0.5.1"
 [dependencies.multiversx-chain-vm-executor-wasmer]
 version = "=0.5.1"
 default-features = false
-git = "https://github.com/multiversx/mx-vm-executor-rs"
-rev = "4af36a92fc0c883eabd391389877ef3d6b8e67b3"
+git = "https://github.com/ShanmugavardhanK/mx-vm-executor-rs"
+rev = "bb2e51477766fce9f794a512a208f851f1e0aaba"
 
 [workspace]
 members = ["."]
+
+[patch.crates-io]
+multiversx-chain-vm-executor = { git = "https://github.com/ShanmugavardhanK/mx-vm-executor-rs", rev = "bb2e51477766fce9f794a512a208f851f1e0aaba" }
+multiversx-chain-vm-executor-wasmer-experimental = { git = "https://github.com/ShanmugavardhanK/mx-vm-executor-rs", rev = "bb2e51477766fce9f794a512a208f851f1e0aaba" }

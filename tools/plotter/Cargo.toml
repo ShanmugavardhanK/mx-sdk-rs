@@ -21,13 +21,17 @@ plotters-canvas = "0.3"
 lto = true
 
 [dependencies.multiversx-sc]
-version = "=0.66.1"
+version = "=0.66.2"
 path = "../../framework/base"
 
 [dependencies.multiversx-sc-scenario]
-version = "=0.66.1"
+version = "=0.66.2"
 path = "../../framework/scenario"
 default-features = false
 
 [workspace]
 members = ["."]
+
+[patch.crates-io]
+multiversx-chain-vm-executor = { git = "https://github.com/ShanmugavardhanK/mx-vm-executor-rs", rev = "bb2e51477766fce9f794a512a208f851f1e0aaba" }
+multiversx-chain-vm-executor-wasmer-experimental = { git = "https://github.com/ShanmugavardhanK/mx-vm-executor-rs", rev = "bb2e51477766fce9f794a512a208f851f1e0aaba" }

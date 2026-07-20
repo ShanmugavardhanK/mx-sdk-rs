@@ -36,6 +36,7 @@ members = [
   "tools/mxpy-snippet-generator",
   "tools/op-test-gen",
   "tools/strip-path",
+  "tools/wallet-miner",
   "tools/wat-gen",
 
   "contracts/modules",
@@ -257,5 +258,5 @@ members = [
 ]
 
 [patch.crates-io]
-multiversx-chain-vm-executor = { git = "https://github.com/xorewa/mx-vm-executor-rs", rev = "1e87b8f34074954f7b3e0d5665de6fd1c4cc6d9c" }
-multiversx-chain-vm-executor-wasmer-experimental = { git = "https://github.com/xorewa/mx-vm-executor-rs", rev = "1e87b8f34074954f7b3e0d5665de6fd1c4cc6d9c" }
+multiversx-chain-vm-executor = { git = "https://github.com/ShanmugavardhanK/mx-vm-executor-rs", rev = "bb2e51477766fce9f794a512a208f851f1e0aaba" }
+multiversx-chain-vm-executor-wasmer-experimental = { git = "https://github.com/ShanmugavardhanK/mx-vm-executor-rs", rev = "bb2e51477766fce9f794a512a208f851f1e0aaba" }

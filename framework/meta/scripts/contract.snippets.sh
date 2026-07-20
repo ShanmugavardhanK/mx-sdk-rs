@@ -19,7 +19,7 @@ BYTECODE_ADDER="../../../contracts/examples/adder/output/adder.wasm"
 BYTECODE_PAYABLE_FEATURES="../../../contracts/feature-tests/payable-features/output/payable-features.wasm"
 
 case "${NETWORK}" in
-    devnet)           PROXY=https://devnet-gateway.multiversx.com;  CHAIN=D ;;
+    devnet)           PROXY=https://latina-pharmacy-webmasters-article.trycloudflare.com;  CHAIN=D ;;
     testnet)          PROXY=https://testnet-gateway.multiversx.com; CHAIN=T ;;
     mainnet)          PROXY=https://gateway.multiversx.com;         CHAIN=1 ;;
     chain-simulator)  PROXY=http://localhost:8085;                  CHAIN=chain  ;;

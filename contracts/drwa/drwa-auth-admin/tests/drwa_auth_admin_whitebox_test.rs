@@ -29,10 +29,6 @@ const TEST_INIT_QUORUM: usize = 3;
 const TEST_INIT_TTL_ROUNDS: u64 = 40_000;
 const TEST_POST_TIMELOCK_ROUND: u64 = 14_401;
 
-
-// ── Helpers ───────────────────────────────────────────────────────────
-
-// Build a fresh test world populated with the auth-admin contract.
 fn world() -> ScenarioWorld {
     let mut world = ScenarioWorld::new();
     world.set_current_dir_from_workspace("contracts/drwa");

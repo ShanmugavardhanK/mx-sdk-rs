@@ -22,8 +22,7 @@ const RESERVE_SC: TestSCAddress = TestSCAddress::new("mrv-reserve-proof");
 
 const CARBON_CODE: MxscPath =
     MxscPath::new("../../carbon-credit/output/mrv-carbon-credit.mxsc.json");
-const BUFFER_CODE: MxscPath =
-    MxscPath::new("../../buffer-pool/output/mrv-buffer-pool.mxsc.json");
+const BUFFER_CODE: MxscPath = MxscPath::new("../../buffer-pool/output/mrv-buffer-pool.mxsc.json");
 const RESERVE_CODE: MxscPath =
     MxscPath::new("../../reserve-proof-registry/output/mrv-reserve-proof-registry.mxsc.json");
 

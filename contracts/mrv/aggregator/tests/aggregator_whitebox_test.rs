@@ -14,10 +14,7 @@ const SIGNER_TWO: TestAddress = TestAddress::new("signer-two");
 const SC_ADDRESS: TestSCAddress = TestSCAddress::new("mrv-aggregator");
 const GOVERNANCE_SC: TestSCAddress = TestSCAddress::new("mrv-governance");
 const CODE_PATH: MxscPath = MxscPath::new("output/mrv-aggregator.mxsc.json");
-const GOVERNANCE_CODE: MxscPath =
-    MxscPath::new("../../governance/output/mrv-governance.mxsc.json");
-const PAI_ID_1: &[u8] = b"CARBON-ab12cd";
-const ORACLE_COUNT: usize = 7;
+const GOVERNANCE_CODE: MxscPath = MxscPath::new("../../governance/output/mrv-governance.mxsc.json");
 const TEST_DEVICE_SECRET: [u8; 32] = [7u8; 32];
 
 fn world() -> ScenarioWorld {
@@ -40,10 +37,7 @@ fn iot_signature<M: ManagedTypeApi>(
     period_end: u64,
     data_cid: &[u8],
     source_timestamp: u64,
-) -> ManagedBuffer<M>
-where
-    M: ManagedTypeApi,
-{
+) -> ManagedBuffer<M> {
     let signing_key = SigningKey::from_bytes(&TEST_DEVICE_SECRET);
     let payload = oracle_reading_signature_payload(
         device,
@@ -78,6 +72,7 @@ fn oracle_reading_signature_payload(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 fn oracle_reading_signature_payload_for_sc(
     sc_address: &[u8],
     device: TestAddress,
@@ -110,10 +105,7 @@ fn iot_signature_for_sc<M: ManagedTypeApi>(
     period_end: u64,
     data_cid: &[u8],
     source_timestamp: u64,
-) -> ManagedBuffer<M>
-where
-    M: ManagedTypeApi,
-{
+) -> ManagedBuffer<M> {
     let signing_key = SigningKey::from_bytes(&TEST_DEVICE_SECRET);
     let payload = oracle_reading_signature_payload_for_sc(
         sc_address,

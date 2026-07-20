@@ -239,6 +239,7 @@ where
 }
 
 #[type_abi]
+#[rustfmt::skip]
 #[derive(ManagedVecItem, NestedEncode, NestedDecode)]
 pub struct Bracket {
     pub index_percent: u64,

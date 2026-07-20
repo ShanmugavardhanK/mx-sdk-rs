@@ -51,7 +51,8 @@ fn deploy_with_policy_registry(world: &mut ScenarioWorld) {
         .set_policy_registry_address(POLICY_SC_ADDRESS)
         .run();
 
-    for token_id in [TOKEN_ID] {
+    {
+        let token_id = TOKEN_ID;
         world
             .tx()
             .from(GOVERNANCE)

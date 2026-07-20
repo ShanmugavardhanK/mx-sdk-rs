@@ -28,8 +28,13 @@ panic = "abort"
 path = ".."
 
 [dependencies.multiversx-sc-wasm-adapter]
-version = "0.66.1"
+version = "0.66.2"
 path = "../../../../framework/wasm-adapter"
 
 [workspace]
 members = ["."]
+
+
+[patch.crates-io]
+multiversx-chain-vm-executor = { git = "https://github.com/ShanmugavardhanK/mx-vm-executor-rs", rev = "bb2e51477766fce9f794a512a208f851f1e0aaba" }
+multiversx-chain-vm-executor-wasmer-experimental = { git = "https://github.com/ShanmugavardhanK/mx-vm-executor-rs", rev = "bb2e51477766fce9f794a512a208f851f1e0aaba" }

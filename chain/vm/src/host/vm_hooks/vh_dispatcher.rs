@@ -47,11 +47,6 @@ impl<C: VMHooksContext> VMHooksDispatcher<C> {
                 .with_const_message(message))
         }
     }
-
-    fn unsupported_native_zk_hook() -> Result<i32, VMHooksEarlyExit> {
-        Err(VMHooksEarlyExit::new(ReturnCode::ExecutionFailed.as_u64())
-            .with_const_message(vm_err_msg::UNSUPPORTED_NATIVE_ZK_HOOK))
-    }
 }
 
 fn map_bool_to_i32(result: Result<bool, VMHooksEarlyExit>) -> Result<i32, VMHooksEarlyExit> {
@@ -2720,77 +2715,5 @@ impl<C: VMHooksContext> VMHooks for VMHooksDispatcher<C> {
             .mb_set(error_handle, error_message.into_bytes());
 
         Ok(())
-    }
-
-    fn managed_verify_groth16(
-        &mut self,
-        _curve_id: i32,
-        _proof_handle: i32,
-        _vk_handle: i32,
-        _pub_witness_handle: i32,
-    ) -> Result<i32, VMHooksEarlyExit> {
-        Self::unsupported_native_zk_hook()
-    }
-
-    fn managed_verify_plonk(
-        &mut self,
-        _curve_id: i32,
-        _proof_handle: i32,
-        _vk_handle: i32,
-        _pub_witness_handle: i32,
-    ) -> Result<i32, VMHooksEarlyExit> {
-        Self::unsupported_native_zk_hook()
-    }
-
-    fn managed_add_ec(
-        &mut self,
-        _curve_id: i32,
-        _group_id: i32,
-        _point1_handle: i32,
-        _point2_handle: i32,
-        _result_handle: i32,
-    ) -> Result<i32, VMHooksEarlyExit> {
-        Self::unsupported_native_zk_hook()
-    }
-
-    fn managed_mul_ec(
-        &mut self,
-        _curve_id: i32,
-        _group_id: i32,
-        _point_handle: i32,
-        _scalar_handle: i32,
-        _result_handle: i32,
-    ) -> Result<i32, VMHooksEarlyExit> {
-        Self::unsupported_native_zk_hook()
-    }
-
-    fn managed_multi_exp_ec(
-        &mut self,
-        _curve_id: i32,
-        _group_id: i32,
-        _points_handle: i32,
-        _scalars_handle: i32,
-        _result_handle: i32,
-    ) -> Result<i32, VMHooksEarlyExit> {
-        Self::unsupported_native_zk_hook()
-    }
-
-    fn managed_map_to_curve_ec(
-        &mut self,
-        _curve_id: i32,
-        _group_id: i32,
-        _element_handle: i32,
-        _result_handle: i32,
-    ) -> Result<i32, VMHooksEarlyExit> {
-        Self::unsupported_native_zk_hook()
-    }
-
-    fn managed_pairing_checks_ec(
-        &mut self,
-        _curve_id: i32,
-        _points_g1_handle: i32,
-        _points_g2_handle: i32,
-    ) -> Result<i32, VMHooksEarlyExit> {
-        Self::unsupported_native_zk_hook()
     }
 }
