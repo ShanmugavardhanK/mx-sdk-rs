@@ -593,8 +593,7 @@ dependencies = [
 [[package]]
 name = "multiversx-chain-vm-executor"
 version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b72af69cd251075c0bc020ea72f0d2056ac0966fc17aced17b866a5324536e28"
+source = "git+https://github.com/xorewa/mx-vm-executor-rs?rev=830f3efa2a1c8103424e4dd0c65b786e1f8305cf#830f3efa2a1c8103424e4dd0c65b786e1f8305cf"
 dependencies = [
  "serde",
 ]
@@ -1187,3 +1186,8 @@ name = "zmij"
 version = "1.0.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8848ee67ecc8aedbaf3e4122217aff892639231befc6a1b58d29fff4c2cabaa"
+
+[[patch.unused]]
+name = "multiversx-chain-vm-executor-wasmer-experimental"
+version = "0.5.1"
+source = "git+https://github.com/xorewa/mx-vm-executor-rs?rev=830f3efa2a1c8103424e4dd0c65b786e1f8305cf#830f3efa2a1c8103424e4dd0c65b786e1f8305cf"
