@@ -10,7 +10,8 @@ pub mod governance_proxy;
 /// Replenishment threshold above which governance approval is required.
 const REPLENISHMENT_GOVERNANCE_THRESHOLD_BPS: u64 = 1_000;
 /// Minimum epoch interval between replenishments for the same project.
-const REPLENISHMENT_COOLDOWN_EPOCHS: u64 = 1_500;
+/// With 20-minute epochs, 6,480 epochs is exactly 90 days.
+const REPLENISHMENT_COOLDOWN_EPOCHS: u64 = 6_480;
 
 /// Per-project buffer balance tracking deposits, cancellations, and replenishments.
 #[type_abi]

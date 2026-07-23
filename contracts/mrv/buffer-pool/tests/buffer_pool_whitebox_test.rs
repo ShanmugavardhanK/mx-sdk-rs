@@ -9,15 +9,15 @@ const GOVERNANCE: TestAddress = TestAddress::new("governance");
 const CARBON_CREDIT: TestAddress = TestAddress::new("carbon-credit");
 const SC_ADDRESS: TestSCAddress = TestSCAddress::new("mrv-buffer-pool");
 const GOVERNANCE_SC: TestSCAddress = TestSCAddress::new("mrv-governance");
-const CODE_PATH: MxscPath = MxscPath::new("output/mrv-buffer-pool.mxsc.json");
+const CODE_PATH: MxscPath = MxscPath::new("mxsc:output/mrv-buffer-pool.mxsc.json");
 const GOVERNANCE_CODE: MxscPath =
-    MxscPath::new("../../governance/output/mrv-governance.mxsc.json");
+    MxscPath::new("mxsc:../../governance/output/mrv-governance.mxsc.json");
 const BUFFER_TOKEN: TestTokenIdentifier = TestTokenIdentifier::new("DVCUBUF-123456");
 const SIGNER_ONE: TestAddress = TestAddress::new("signer-one");
 const SIGNER_TWO: TestAddress = TestAddress::new("signer-two");
 
 fn world() -> ScenarioWorld {
-    let mut world = ScenarioWorld::new();
+    let mut world = ScenarioWorld::new().executor_config(ExecutorConfig::full_suite());
     world.set_current_dir_from_workspace("contracts/mrv/buffer-pool");
     world.register_contract(CODE_PATH, mrv_buffer_pool::ContractBuilder);
     world.register_contract(GOVERNANCE_CODE, mrv_governance::ContractBuilder);
@@ -287,7 +287,25 @@ fn buffer_pool_replenish_buffer_credits_small_amount_rs() {
     let mut world = world();
     deploy_and_deposit(&mut world);
 
-    world.current_block().block_epoch(1_500u64);
+    world.current_block().block_epoch(6_479u64);
+
+    world
+        .tx()
+        .from(CARBON_CREDIT)
+        .to(SC_ADDRESS)
+        .returns(ExpectError(
+            4u64,
+            "replenishment rate limit: 1 per 90 days per project",
+        ))
+        .whitebox(mrv_buffer_pool::contract_obj, |sc| {
+            sc.replenish_buffer_credits(
+                ManagedBuffer::from(b"project-010"),
+                BigUint::from(500u64),
+                ManagedBuffer::from(b"bafyjust-cooldown-boundary-early"),
+            );
+        });
+
+    world.current_block().block_epoch(6_480u64);
 
     // 10% of 10_000 = 1_000. Replenish 500 (under threshold) from authorized caller.
     world
@@ -349,7 +367,7 @@ fn buffer_pool_replenish_non_governance_cumulative_threshold_fails_rs() {
     let mut world = world();
     deploy_and_deposit(&mut world);
 
-    world.current_block().block_epoch(1_500u64);
+    world.current_block().block_epoch(6_480u64);
 
     world
         .tx()
@@ -363,7 +381,7 @@ fn buffer_pool_replenish_non_governance_cumulative_threshold_fails_rs() {
             );
         });
 
-    world.current_block().block_epoch(3_000u64);
+    world.current_block().block_epoch(12_960u64);
 
     world
         .tx()
@@ -381,7 +399,7 @@ fn buffer_pool_replenish_non_governance_cumulative_threshold_fails_rs() {
             );
         });
 
-    world.current_block().block_epoch(4_500u64);
+    world.current_block().block_epoch(19_440u64);
 
     world
         .tx()
@@ -450,7 +468,7 @@ fn buffer_pool_replenishment_cooldown_enforcement_rs() {
             );
         });
 
-    world.current_block().block_epoch(1_500u64);
+    world.current_block().block_epoch(6_480u64);
 
     // First replenishment after cooldown should succeed.
     world
@@ -465,8 +483,8 @@ fn buffer_pool_replenishment_cooldown_enforcement_rs() {
             );
         });
 
-    // Second replenishment at epoch 100 — before cooldown (1500 epochs)
-    world.current_block().block_epoch(100u64);
+    // A second replenishment remains blocked until another 6,480 epochs pass.
+    world.current_block().block_epoch(12_959u64);
 
     world
         .tx()

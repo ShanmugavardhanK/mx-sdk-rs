@@ -36,6 +36,7 @@ members = [
   "tools/mxpy-snippet-generator",
   "tools/op-test-gen",
   "tools/strip-path",
+  "tools/wallet-miner",
   "tools/wat-gen",
 
   "contracts/modules",
@@ -256,6 +257,26 @@ members = [
   # "contracts/feature-tests/gas-tests", ## uncomment for easier development
 ]
 
+[workspace.dependencies.multiversx-sc]
+version = "0.66.2"
+path = "framework/base"
+
+[workspace.dependencies.multiversx-sc-scenario]
+version = "0.66.2"
+path = "framework/scenario"
+
+[workspace.dependencies.multiversx-sc-meta-lib]
+version = "0.66.2"
+path = "framework/meta-lib"
+
+[workspace.dependencies.multiversx-sc-snippets]
+version = "0.66.2"
+path = "framework/snippets"
+
+[workspace.dependencies.multiversx-sc-modules]
+version = "0.66.2"
+path = "contracts/modules"
+
 [patch.crates-io]
-multiversx-chain-vm-executor = { git = "https://github.com/xorewa/mx-vm-executor-rs", rev = "1e87b8f34074954f7b3e0d5665de6fd1c4cc6d9c" }
-multiversx-chain-vm-executor-wasmer-experimental = { git = "https://github.com/xorewa/mx-vm-executor-rs", rev = "1e87b8f34074954f7b3e0d5665de6fd1c4cc6d9c" }
+multiversx-chain-vm-executor = { git = "https://github.com/xorewa/mx-vm-executor-rs", rev = "830f3efa2a1c8103424e4dd0c65b786e1f8305cf" }
+multiversx-chain-vm-executor-wasmer-experimental = { git = "https://github.com/xorewa/mx-vm-executor-rs", rev = "830f3efa2a1c8103424e4dd0c65b786e1f8305cf" }

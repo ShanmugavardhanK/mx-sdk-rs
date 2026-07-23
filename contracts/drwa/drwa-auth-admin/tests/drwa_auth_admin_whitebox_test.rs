@@ -1,4 +1,7 @@
-use drwa_auth_admin::DrwaAuthAdmin;
+use drwa_auth_admin::{
+    DRWA_AUTH_TIMELOCK_DEFAULT_SECONDS, DRWA_AUTH_TIMELOCK_NOT_ELAPSED_ERROR,
+    DRWA_AUTH_TIMELOCK_RECOVERY_ADMIN_SECONDS, DrwaAuthAdmin,
+};
 use drwa_common::{DrwaCallerDomain, DrwaSyncOperationType, set_drwa_sync_hook_test_result};
 use multiversx_sc::types::ManagedBuffer;
 use multiversx_sc_scenario::imports::*;
@@ -19,20 +22,15 @@ const AUTH_ADMIN_HEX_V2: &[u8] =
 const AUTH_ADMIN_BECH32: &[u8] = b"erd1qqqqqqqqqqqqqpgqf97pgqdy0tstwauxu09kszz020hp5kgqqzzsscqtww";
 
 // B-03 (AUD-003): test scaffolding must honor the procedure-floor 3-of-5
-// and the mandatory 24h/48h timelocks. We pick a TTL (40_000 rounds)
-// long enough that the 28_800-round recovery-admin timelock window
-// fits inside it with margin, and a post-24h-timelock round constant
-// (14_401) that most tests can advance to before calling
-// `perform_action`. Tests that exercise the recovery-admin 48h window
-// advance to 28_801 explicitly.
+// and the mandatory build-profile timelocks. Proposal TTL remains round-based,
+// while the security timelock is timestamp-based so round-duration changes
+// cannot shorten the wall-clock delay.
 const TEST_INIT_QUORUM: usize = 3;
 const TEST_INIT_TTL_ROUNDS: u64 = 40_000;
 const TEST_POST_TIMELOCK_ROUND: u64 = 14_401;
+const TEST_DEFAULT_TIMELOCK_SECONDS: u64 = DRWA_AUTH_TIMELOCK_DEFAULT_SECONDS;
+const TEST_RECOVERY_TIMELOCK_SECONDS: u64 = DRWA_AUTH_TIMELOCK_RECOVERY_ADMIN_SECONDS;
 
-
-// ── Helpers ───────────────────────────────────────────────────────────
-
-// Build a fresh test world populated with the auth-admin contract.
 fn world() -> ScenarioWorld {
     let mut world = ScenarioWorld::new();
     world.set_current_dir_from_workspace("contracts/drwa");
@@ -82,6 +80,22 @@ fn sign_to_reach_quorum(world: &mut ScenarioWorld, action_id: u64) {
         .whitebox(drwa_auth_admin::contract_obj, |sc| sc.sign(action_id));
 }
 
+fn advance_past_default_timelock(world: &mut ScenarioWorld) {
+    world.current_block().block_round(TEST_POST_TIMELOCK_ROUND);
+    world
+        .current_block()
+        .block_timestamp_seconds(TEST_DEFAULT_TIMELOCK_SECONDS);
+}
+
+fn advance_past_recovery_timelock(world: &mut ScenarioWorld) {
+    world
+        .current_block()
+        .block_round(TEST_POST_TIMELOCK_ROUND * 2);
+    world
+        .current_block()
+        .block_timestamp_seconds(TEST_RECOVERY_TIMELOCK_SECONDS);
+}
+
 #[test]
 fn drwa_auth_admin_update_caller_flow() {
     let mut world = world();
@@ -101,7 +115,7 @@ fn drwa_auth_admin_update_caller_flow() {
         });
 
     sign_to_reach_quorum(&mut world, action_id);
-    world.current_block().block_round(TEST_POST_TIMELOCK_ROUND);
+    advance_past_default_timelock(&mut world);
 
     world
         .tx()
@@ -156,7 +170,7 @@ fn drwa_auth_admin_sync_hook_failure_reverts_caller_update() {
             );
         });
     sign_to_reach_quorum(&mut world, action_id);
-    world.current_block().block_round(TEST_POST_TIMELOCK_ROUND);
+    advance_past_default_timelock(&mut world);
 
     set_drwa_sync_hook_test_result(17);
     world
@@ -232,7 +246,7 @@ fn drwa_auth_admin_accepts_bech32_caller_address() {
         });
 
     sign_to_reach_quorum(&mut world, action_id);
-    world.current_block().block_round(TEST_POST_TIMELOCK_ROUND);
+    advance_past_default_timelock(&mut world);
 
     world
         .tx()
@@ -407,7 +421,7 @@ fn drwa_auth_admin_change_quorum_guards() {
             action_id = sc.propose_change_quorum(6);
         });
     sign_to_reach_quorum(&mut world, action_id);
-    world.current_block().block_round(TEST_POST_TIMELOCK_ROUND);
+    advance_past_default_timelock(&mut world);
     world
         .tx()
         .from(SIGNER_ONE)
@@ -438,7 +452,7 @@ fn drwa_auth_admin_remove_signer_cannot_break_quorum() {
         });
     // Reach quorum=3 with SIGNER_TWO + SIGNER_THREE.
     sign_to_reach_quorum(&mut world, change_quorum_action);
-    world.current_block().block_round(TEST_POST_TIMELOCK_ROUND);
+    advance_past_default_timelock(&mut world);
     world
         .tx()
         .from(SIGNER_ONE)
@@ -471,6 +485,9 @@ fn drwa_auth_admin_remove_signer_cannot_break_quorum() {
         .current_block()
         .block_round(TEST_POST_TIMELOCK_ROUND + TEST_POST_TIMELOCK_ROUND);
     world
+        .current_block()
+        .block_timestamp_seconds(TEST_DEFAULT_TIMELOCK_SECONDS * 2);
+    world
         .tx()
         .from(SIGNER_ONE)
         .to(ADMIN_SC)
@@ -502,12 +519,15 @@ fn drwa_auth_admin_versions_increment() {
                 );
             });
         sign_to_reach_quorum(&mut world, action_id);
-        // B-03: each iteration must re-advance the block round past the
-        // previous timelock window so the next action's own timelock
-        // has time to elapse.
+        // B-03: each iteration must re-advance past the previous
+        // timelock window so the next action's own timelock has time to
+        // elapse.
         world
             .current_block()
             .block_round(TEST_POST_TIMELOCK_ROUND + (iteration as u64) * TEST_POST_TIMELOCK_ROUND);
+        world.current_block().block_timestamp_seconds(
+            TEST_DEFAULT_TIMELOCK_SECONDS + (iteration as u64) * TEST_DEFAULT_TIMELOCK_SECONDS,
+        );
         world
             .tx()
             .from(SIGNER_ONE)
@@ -585,7 +605,7 @@ fn drwa_auth_admin_add_signer_flow() {
             action_id = sc.propose_add_signer(NEW_SIGNER.to_managed_address());
         });
     sign_to_reach_quorum(&mut world, action_id);
-    world.current_block().block_round(TEST_POST_TIMELOCK_ROUND);
+    advance_past_default_timelock(&mut world);
     world
         .tx()
         .from(SIGNER_ONE)
@@ -626,7 +646,7 @@ fn drwa_auth_admin_replace_signer_flow() {
     // but can still sign (they remain a signer until perform_action
     // actually executes the removal).
     sign_to_reach_quorum(&mut world, action_id);
-    world.current_block().block_round(TEST_POST_TIMELOCK_ROUND);
+    advance_past_default_timelock(&mut world);
     world
         .tx()
         .from(SIGNER_ONE)
@@ -692,7 +712,7 @@ fn drwa_auth_admin_removed_signer_signature_no_longer_counts() {
         });
     sign_to_reach_quorum(&mut world, replace_action);
 
-    world.current_block().block_round(TEST_POST_TIMELOCK_ROUND);
+    advance_past_default_timelock(&mut world);
     world
         .tx()
         .from(SIGNER_ONE)
@@ -720,10 +740,7 @@ fn drwa_auth_admin_removed_signer_signature_no_longer_counts() {
         .tx()
         .from(SIGNER_ONE)
         .to(ADMIN_SC)
-        .returns(ExpectError(
-            4u64,
-            "timelock not elapsed: must wait 24h after quorum (48h for recovery-admin)",
-        ))
+        .returns(ExpectError(4u64, DRWA_AUTH_TIMELOCK_NOT_ELAPSED_ERROR))
         .whitebox(drwa_auth_admin::contract_obj, |sc| {
             let _ = sc.perform_action(guarded_action);
         });
@@ -783,7 +800,7 @@ fn drwa_auth_admin_stale_signer_cleanup_uses_pending_action_index() {
         });
     sign_to_reach_quorum(&mut world, replace_action);
 
-    world.current_block().block_round(TEST_POST_TIMELOCK_ROUND);
+    advance_past_default_timelock(&mut world);
     world
         .tx()
         .from(SIGNER_ONE)
@@ -847,6 +864,8 @@ fn drwa_auth_admin_upgrade_migrates_pending_action_indexes_and_restarts_timelock
             sc.storage_version().clear();
             sc.action_approved_at_round(action_id).clear();
             sc.action_timelock_rounds(action_id).clear();
+            sc.action_approved_at_timestamp_seconds(action_id).clear();
+            sc.action_timelock_seconds(action_id).clear();
             sc.signer_pending_action_ids(&SIGNER_ONE.to_managed_address())
                 .clear();
             sc.signer_pending_action_ids(&SIGNER_TWO.to_managed_address())
@@ -862,12 +881,17 @@ fn drwa_auth_admin_upgrade_migrates_pending_action_indexes_and_restarts_timelock
         .query()
         .to(ADMIN_SC)
         .whitebox(drwa_auth_admin::contract_obj, |sc| {
-            assert_eq!(sc.storage_version().get(), 2);
+            assert_eq!(sc.storage_version().get(), 3);
             assert_eq!(
                 sc.action_timelock_rounds(action_id).get(),
                 TEST_POST_TIMELOCK_ROUND - 1
             );
+            assert_eq!(
+                sc.action_timelock_seconds(action_id).get(),
+                TEST_DEFAULT_TIMELOCK_SECONDS
+            );
             assert_eq!(sc.action_approved_at_round(action_id).get(), 101);
+            assert_eq!(sc.action_approved_at_timestamp_seconds(action_id).get(), 1);
             assert!(
                 sc.signer_pending_action_ids(&SIGNER_ONE.to_managed_address())
                     .contains(&action_id)
@@ -886,15 +910,15 @@ fn drwa_auth_admin_upgrade_migrates_pending_action_indexes_and_restarts_timelock
         .tx()
         .from(SIGNER_ONE)
         .to(ADMIN_SC)
-        .returns(ExpectError(
-            4u64,
-            "timelock not elapsed: must wait 24h after quorum (48h for recovery-admin)",
-        ))
+        .returns(ExpectError(4u64, DRWA_AUTH_TIMELOCK_NOT_ELAPSED_ERROR))
         .whitebox(drwa_auth_admin::contract_obj, |sc| {
             let _ = sc.perform_action(action_id);
         });
 
     world.current_block().block_round(14_500);
+    world
+        .current_block()
+        .block_timestamp_seconds(TEST_DEFAULT_TIMELOCK_SECONDS);
     world
         .tx()
         .from(SIGNER_ONE)
@@ -922,7 +946,7 @@ fn drwa_auth_admin_rejects_replay_perform() {
             );
         });
     sign_to_reach_quorum(&mut world, action_id);
-    world.current_block().block_round(TEST_POST_TIMELOCK_ROUND);
+    advance_past_default_timelock(&mut world);
     world
         .tx()
         .from(SIGNER_ONE)
@@ -1005,7 +1029,7 @@ fn drwa_auth_admin_rejects_zero_quorum_change_on_execute() {
             action_id = sc.propose_change_quorum(0);
         });
     sign_to_reach_quorum(&mut world, action_id);
-    world.current_block().block_round(TEST_POST_TIMELOCK_ROUND);
+    advance_past_default_timelock(&mut world);
     world
         .tx()
         .from(SIGNER_ONE)
@@ -1137,22 +1161,23 @@ fn drwa_auth_admin_b03_rejects_perform_before_timelock_elapsed() {
         });
     sign_to_reach_quorum(&mut world, action_id);
 
-    // Quorum reached at round 0 → minimum execution round = 14_400.
-    // Attempt at round 14_399 must fail with the timelock guard.
-    world.current_block().block_round(14_399);
+    // Quorum reached at timestamp 0 → minimum execution timestamp = 86,400.
+    // Attempt at 86,399 seconds must fail with the timelock guard.
+    world
+        .current_block()
+        .block_timestamp_seconds(TEST_DEFAULT_TIMELOCK_SECONDS - 1);
     world
         .tx()
         .from(SIGNER_ONE)
         .to(ADMIN_SC)
-        .returns(ExpectError(
-            4u64,
-            "timelock not elapsed: must wait 24h after quorum (48h for recovery-admin)",
-        ))
+        .returns(ExpectError(4u64, DRWA_AUTH_TIMELOCK_NOT_ELAPSED_ERROR))
         .whitebox(drwa_auth_admin::contract_obj, |sc| {
             let _ = sc.perform_action(action_id);
         });
 
-    world.current_block().block_round(14_400);
+    world
+        .current_block()
+        .block_timestamp_seconds(TEST_DEFAULT_TIMELOCK_SECONDS);
     world
         .tx()
         .from(SIGNER_ONE)
@@ -1183,7 +1208,7 @@ fn drwa_auth_admin_c213_exposes_no_emergency_override_policy() {
 }
 
 #[test]
-fn drwa_auth_admin_b03_recovery_admin_domain_uses_48h_timelock() {
+fn drwa_auth_admin_b03_recovery_admin_domain_uses_longer_timelock() {
     let mut world = world();
     deploy(&mut world);
 
@@ -1200,22 +1225,21 @@ fn drwa_auth_admin_b03_recovery_admin_domain_uses_48h_timelock() {
         });
     sign_to_reach_quorum(&mut world, action_id);
 
-    // 24h is NOT enough for recovery-admin.
-    world.current_block().block_round(14_401);
+    // The ordinary-action delay is not enough for recovery-admin.
+    world
+        .current_block()
+        .block_timestamp_seconds(TEST_DEFAULT_TIMELOCK_SECONDS);
     world
         .tx()
         .from(SIGNER_ONE)
         .to(ADMIN_SC)
-        .returns(ExpectError(
-            4u64,
-            "timelock not elapsed: must wait 24h after quorum (48h for recovery-admin)",
-        ))
+        .returns(ExpectError(4u64, DRWA_AUTH_TIMELOCK_NOT_ELAPSED_ERROR))
         .whitebox(drwa_auth_admin::contract_obj, |sc| {
             let _ = sc.perform_action(action_id);
         });
 
-    // 48h window crossed → succeeds.
-    world.current_block().block_round(28_801);
+    // The longer recovery-admin window crossed → succeeds.
+    advance_past_recovery_timelock(&mut world);
     world
         .tx()
         .from(SIGNER_ONE)
@@ -1263,30 +1287,34 @@ fn drwa_auth_admin_b03_unsign_below_quorum_restarts_timelock() {
         .to(ADMIN_SC)
         .whitebox(drwa_auth_admin::contract_obj, |sc| sc.unsign(action_id));
 
-    // Advance 10 rounds, then re-sign. Approval round is now 10.
+    // Advance 10 seconds, then re-sign. Approval timestamp is now 10.
     world.current_block().block_round(10);
+    world.current_block().block_timestamp_seconds(10);
     world
         .tx()
         .from(SIGNER_TWO)
         .to(ADMIN_SC)
         .whitebox(drwa_auth_admin::contract_obj, |sc| sc.sign(action_id));
 
-    // At round 14_409 (10 + 14_399) must still reject.
+    // At timestamp 86,409 (10 + 86,399) must still reject.
     world.current_block().block_round(14_409);
+    world
+        .current_block()
+        .block_timestamp_seconds(10 + TEST_DEFAULT_TIMELOCK_SECONDS - 1);
     world
         .tx()
         .from(SIGNER_ONE)
         .to(ADMIN_SC)
-        .returns(ExpectError(
-            4u64,
-            "timelock not elapsed: must wait 24h after quorum (48h for recovery-admin)",
-        ))
+        .returns(ExpectError(4u64, DRWA_AUTH_TIMELOCK_NOT_ELAPSED_ERROR))
         .whitebox(drwa_auth_admin::contract_obj, |sc| {
             let _ = sc.perform_action(action_id);
         });
 
-    // At round 14_410 (10 + 14_400) succeeds.
+    // At timestamp 86,410 (10 + 86,400) succeeds.
     world.current_block().block_round(14_410);
+    world
+        .current_block()
+        .block_timestamp_seconds(10 + TEST_DEFAULT_TIMELOCK_SECONDS);
     world
         .tx()
         .from(SIGNER_ONE)
@@ -1314,7 +1342,7 @@ fn drwa_auth_admin_b03_change_quorum_rejects_below_floor() {
             action_id = sc.propose_change_quorum(2);
         });
     sign_to_reach_quorum(&mut world, action_id);
-    world.current_block().block_round(TEST_POST_TIMELOCK_ROUND);
+    advance_past_default_timelock(&mut world);
     world
         .tx()
         .from(SIGNER_ONE)
@@ -1341,7 +1369,7 @@ fn drwa_auth_admin_b03_remove_signer_rejects_below_signer_floor() {
             action_id = sc.propose_remove_signer(SIGNER_FIVE.to_managed_address());
         });
     sign_to_reach_quorum(&mut world, action_id);
-    world.current_block().block_round(TEST_POST_TIMELOCK_ROUND);
+    advance_past_default_timelock(&mut world);
     world
         .tx()
         .from(SIGNER_ONE)

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - xorewa
   pull_request:
   workflow_dispatch:
 
@@ -107,4 +108,3 @@ jobs:
           components: rustfmt
       - name: Rustfmt Check
         uses: actions-rust-lang/rustfmt@v1
-

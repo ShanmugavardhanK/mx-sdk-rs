@@ -1,6 +1,6 @@
 use drwa_asset_manager::DrwaAssetManager;
 use drwa_common::{
-    DrwaCallerDomain, DrwaGovernanceModule, DrwaSyncOperationType, set_drwa_sync_hook_test_result,
+    set_drwa_sync_hook_test_result, DrwaCallerDomain, DrwaGovernanceModule, DrwaSyncOperationType,
 };
 use drwa_policy_registry::DrwaPolicyRegistry;
 use multiversx_sc::types::ManagedBuffer;
@@ -76,6 +76,8 @@ fn deploy_asset_manager_with_policy_registry(world: &mut ScenarioWorld, governan
                     false,
                     investor_classes,
                     jurisdictions,
+                    false,
+                    false,
                 );
             },
         );
@@ -99,7 +101,6 @@ fn asset_manager_whitebox_flow() {
                 ManagedBuffer::from(TOKEN_ID_1),
                 ManagedBuffer::from(b"ESDT"),
                 ManagedBuffer::from(b"Hospitality"),
-                ManagedBuffer::from(b"HOTEL-ab12cd"),
             );
         });
 
@@ -119,6 +120,12 @@ fn asset_manager_whitebox_flow() {
                 false,
                 false,
                 false,
+                0u64,
+                false,
+                false,
+                ManagedBuffer::new(),
+                ManagedBuffer::new(),
+                0u32,
             );
 
             assert!(envelope.caller_domain == DrwaCallerDomain::AssetManager);
@@ -128,13 +135,54 @@ fn asset_manager_whitebox_flow() {
             assert!(operation.operation_type == DrwaSyncOperationType::HolderMirror);
             assert_eq!(operation.version, 1);
             operation.body.with_buffer_contents(|body| {
-                assert!(
-                    body.len() >= 8,
-                    "holder mirror sync body must carry evaluated policy version"
-                );
-                assert_eq!(&body[body.len() - 8..], &1u64.to_be_bytes());
+                let body_str = core::str::from_utf8(body).unwrap();
+                assert!(body_str.starts_with('{'));
+                assert!(body_str.contains("\"policy_version_evaluated\":1"));
+                assert!(body_str.contains("\"lock_until_round\":0"));
+                assert!(body_str.contains("\"travel_rule_attested\":false"));
+                assert!(body_str.contains("\"sanctions_cleared\":false"));
+                assert!(body_str.contains("\"sanctions_screening_cid\":\"\""));
+                assert!(body_str.contains("\"ubo_parent_entity\":\"\""));
+                assert!(body_str.contains("\"ownership_pct\":0"));
             });
             assert!(!envelope.payload_hash.is_empty());
+        });
+
+    world
+        .tx()
+        .from(GOVERNANCE)
+        .to(SC_ADDRESS)
+        .whitebox(drwa_asset_manager::contract_obj, |sc| {
+            let envelope = sc.sync_holder_compliance(
+                ManagedBuffer::from(TOKEN_ID_1),
+                HOLDER.to_managed_address(),
+                ManagedBuffer::from(b"approved"),
+                ManagedBuffer::from(b"clear"),
+                ManagedBuffer::from(b"accredited"),
+                ManagedBuffer::from(b"SG"),
+                250,
+                false,
+                false,
+                false,
+                999u64,
+                true,
+                true,
+                ManagedBuffer::from(b"cid:screening/123"),
+                ManagedBuffer::from(b"entity:parent-1"),
+                2500u32,
+            );
+
+            let operation = envelope.operations.get(0);
+            assert_eq!(operation.version, 2);
+            operation.body.with_buffer_contents(|body| {
+                let body_str = core::str::from_utf8(body).unwrap();
+                assert!(body_str.contains("\"lock_until_round\":999"));
+                assert!(body_str.contains("\"travel_rule_attested\":true"));
+                assert!(body_str.contains("\"sanctions_cleared\":true"));
+                assert!(body_str.contains("\"sanctions_screening_cid\":\"cid:screening/123\""));
+                assert!(body_str.contains("\"ubo_parent_entity\":\"entity:parent-1\""));
+                assert!(body_str.contains("\"ownership_pct\":2500"));
+            });
         });
 
     world
@@ -149,13 +197,25 @@ fn asset_manager_whitebox_flow() {
             let mirror = sc
                 .holder_mirror(&token_id, &HOLDER.to_managed_address())
                 .get();
-            assert_eq!(mirror.holder_policy_version, 1);
+            assert_eq!(mirror.holder_policy_version, 2);
             assert_eq!(mirror.kyc_status, ManagedBuffer::from(b"approved"));
             assert_eq!(mirror.investor_class, ManagedBuffer::from(b"accredited"));
+            assert_eq!(mirror.lock_until_round, 999);
+            assert!(mirror.travel_rule_attested);
+            assert!(mirror.sanctions_cleared);
+            assert_eq!(
+                mirror.sanctions_screening_cid,
+                ManagedBuffer::from(b"cid:screening/123")
+            );
+            assert_eq!(
+                mirror.ubo_parent_entity,
+                ManagedBuffer::from(b"entity:parent-1")
+            );
+            assert_eq!(mirror.ownership_pct, 2500);
             assert_eq!(
                 sc.holder_policy_version(&token_id, &HOLDER.to_managed_address())
                     .get(),
-                1
+                2
             );
         });
 }
@@ -177,7 +237,6 @@ fn asset_manager_attaches_hash_only_legal_custody_pack() {
                 ManagedBuffer::from(TOKEN_ID_1),
                 ManagedBuffer::from(b"ESDT"),
                 ManagedBuffer::from(b"Hospitality"),
-                ManagedBuffer::from(b"HOTEL-ab12cd"),
             );
 
             sc.attach_asset_legal_custody_pack(
@@ -223,7 +282,6 @@ fn asset_manager_rejects_short_legal_custody_hash() {
                 ManagedBuffer::from(TOKEN_ID_1),
                 ManagedBuffer::from(b"ESDT"),
                 ManagedBuffer::from(b"Hospitality"),
-                ManagedBuffer::from(b"HOTEL-ab12cd"),
             );
         });
 
@@ -264,7 +322,6 @@ fn asset_manager_sync_hook_failure_reverts_asset_registration() {
                 ManagedBuffer::from(TOKEN_ID_1),
                 ManagedBuffer::from(b"ESDT"),
                 ManagedBuffer::from(b"Hospitality"),
-                ManagedBuffer::from(b"HOTEL-ab12cd"),
             );
         });
     set_drwa_sync_hook_test_result(0);
@@ -276,6 +333,68 @@ fn asset_manager_sync_hook_failure_reverts_asset_registration() {
             let token_id = ManagedBuffer::from(TOKEN_ID_1);
             assert!(sc.asset(&token_id).is_empty());
             assert!(sc.asset_record_version(&token_id).is_empty());
+        });
+}
+
+#[test]
+fn asset_manager_sync_hook_failure_reverts_holder_policy_marker() {
+    let mut world = world();
+
+    world.account(OWNER).nonce(1).balance(1_000_000u64);
+    world.account(GOVERNANCE).nonce(1).balance(1_000_000u64);
+    deploy_asset_manager_with_policy_registry(&mut world, GOVERNANCE);
+
+    world
+        .tx()
+        .from(GOVERNANCE)
+        .to(SC_ADDRESS)
+        .whitebox(drwa_asset_manager::contract_obj, |sc| {
+            sc.register_asset(
+                ManagedBuffer::from(TOKEN_ID_1),
+                ManagedBuffer::from(b"ESDT"),
+                ManagedBuffer::from(b"Hospitality"),
+            );
+        });
+
+    set_drwa_sync_hook_test_result(13);
+    world
+        .tx()
+        .from(GOVERNANCE)
+        .to(SC_ADDRESS)
+        .returns(ExpectError(4u64, "native mirror sync failed"))
+        .whitebox(drwa_asset_manager::contract_obj, |sc| {
+            sc.sync_holder_compliance(
+                ManagedBuffer::from(TOKEN_ID_1),
+                HOLDER.to_managed_address(),
+                ManagedBuffer::from(b"approved"),
+                ManagedBuffer::from(b"clear"),
+                ManagedBuffer::from(b"accredited"),
+                ManagedBuffer::from(b"SG"),
+                250,
+                false,
+                false,
+                false,
+                0u64,
+                false,
+                false,
+                ManagedBuffer::new(),
+                ManagedBuffer::new(),
+                0u32,
+            );
+        });
+    set_drwa_sync_hook_test_result(0);
+
+    world
+        .query()
+        .to(SC_ADDRESS)
+        .whitebox(drwa_asset_manager::contract_obj, |sc| {
+            let token_id = ManagedBuffer::from(TOKEN_ID_1);
+            let holder = HOLDER.to_managed_address();
+            assert!(sc.holder_mirror(&token_id, &holder).is_empty());
+            assert!(sc.holder_policy_version(&token_id, &holder).is_empty());
+            assert!(sc
+                .holder_policy_version_evaluated(&token_id, &holder)
+                .is_empty());
         });
 }
 
@@ -296,7 +415,6 @@ fn asset_manager_rejects_non_owner_and_increments_holder_version() {
                 ManagedBuffer::from(TOKEN_ID_1),
                 ManagedBuffer::from(b"ESDT"),
                 ManagedBuffer::from(b"Hospitality"),
-                ManagedBuffer::from(b"HOTEL-ab12cd"),
             );
         });
 
@@ -315,6 +433,12 @@ fn asset_manager_rejects_non_owner_and_increments_holder_version() {
                     version == 2,
                     false,
                     false,
+                    0u64,
+                    false,
+                    false,
+                    ManagedBuffer::new(),
+                    ManagedBuffer::new(),
+                    0u32,
                 );
                 assert_eq!(envelope.operations.get(0).version, version);
             },
@@ -368,7 +492,6 @@ fn asset_manager_allows_governance_to_manage_assets_and_holders() {
                 ManagedBuffer::from(TOKEN_ID_2),
                 ManagedBuffer::from(b"ESDT"),
                 ManagedBuffer::from(b"Hospitality"),
-                ManagedBuffer::from(b"HOTEL-bc23de"),
             );
         });
 
@@ -388,6 +511,12 @@ fn asset_manager_allows_governance_to_manage_assets_and_holders() {
                 false,
                 false,
                 false,
+                0u64,
+                false,
+                false,
+                ManagedBuffer::new(),
+                ManagedBuffer::new(),
+                0u32,
             );
             assert_eq!(envelope.operations.get(0).version, 1);
         });
@@ -471,7 +600,6 @@ fn asset_manager_rejects_invalid_token_id_format() {
                 ManagedBuffer::from(b"HOTEL-001"),
                 ManagedBuffer::from(b"ESDT"),
                 ManagedBuffer::from(b"Hospitality"),
-                ManagedBuffer::from(b"HOTEL-001"),
             );
         });
 }
@@ -497,7 +625,6 @@ fn asset_manager_rejects_register_asset_without_registered_token_policy() {
                 ManagedBuffer::from(TOKEN_ID_3),
                 ManagedBuffer::from(b"ESDT"),
                 ManagedBuffer::from(b"Hospitality"),
-                ManagedBuffer::from(b"HOTEL-cd34ef"),
             );
         });
 }
@@ -519,7 +646,6 @@ fn asset_manager_identical_holder_sync_is_noop() {
                 ManagedBuffer::from(TOKEN_ID_1),
                 ManagedBuffer::from(b"ESDT"),
                 ManagedBuffer::from(b"Hospitality"),
-                ManagedBuffer::from(b"HOTEL-ab12cd"),
             );
         });
 
@@ -539,8 +665,85 @@ fn asset_manager_identical_holder_sync_is_noop() {
                 false,
                 false,
                 false,
+                0u64,
+                false,
+                false,
+                ManagedBuffer::new(),
+                ManagedBuffer::new(),
+                0u32,
             );
             assert_eq!(envelope.operations.get(0).version, 1);
+            assert_eq!(
+                sc.holder_policy_version_evaluated(
+                    &ManagedBuffer::from(TOKEN_ID_1),
+                    &HOLDER.to_managed_address(),
+                )
+                .get(),
+                1
+            );
+        });
+
+    // The holder fields are unchanged, but a policy revision must force a fresh
+    // native write so the mirror records the policy version that was evaluated.
+    world.tx().from(GOVERNANCE).to(POLICY_SC_ADDRESS).whitebox(
+        drwa_policy_registry::contract_obj,
+        |sc| {
+            sc.set_token_policy(
+                ManagedBuffer::from(TOKEN_ID_1),
+                true,
+                true,
+                false,
+                false,
+                ManagedVec::new(),
+                ManagedVec::new(),
+                false,
+                false,
+            );
+        },
+    );
+
+    world
+        .tx()
+        .from(GOVERNANCE)
+        .to(SC_ADDRESS)
+        .whitebox(drwa_asset_manager::contract_obj, |sc| {
+            let envelope = sc.sync_holder_compliance(
+                ManagedBuffer::from(TOKEN_ID_1),
+                HOLDER.to_managed_address(),
+                ManagedBuffer::from(b"approved"),
+                ManagedBuffer::from(b"clear"),
+                ManagedBuffer::from(b"accredited"),
+                ManagedBuffer::from(b"SG"),
+                250,
+                false,
+                false,
+                false,
+                0u64,
+                false,
+                false,
+                ManagedBuffer::new(),
+                ManagedBuffer::new(),
+                0u32,
+            );
+            assert_eq!(envelope.operations.len(), 1);
+            assert_eq!(envelope.operations.get(0).version, 2);
+            envelope
+                .operations
+                .get(0)
+                .body
+                .with_buffer_contents(|body| {
+                    assert!(core::str::from_utf8(body)
+                        .unwrap()
+                        .contains("\"policy_version_evaluated\":2"));
+                });
+            assert_eq!(
+                sc.holder_policy_version_evaluated(
+                    &ManagedBuffer::from(TOKEN_ID_1),
+                    &HOLDER.to_managed_address(),
+                )
+                .get(),
+                2
+            );
         });
 
     world
@@ -559,6 +762,12 @@ fn asset_manager_identical_holder_sync_is_noop() {
                 false,
                 false,
                 false,
+                0u64,
+                false,
+                false,
+                ManagedBuffer::new(),
+                ManagedBuffer::new(),
+                0u32,
             );
             assert_eq!(envelope.operations.len(), 0);
             assert_eq!(
@@ -567,7 +776,7 @@ fn asset_manager_identical_holder_sync_is_noop() {
                     &HOLDER.to_managed_address(),
                 )
                 .get(),
-                1
+                2
             );
         });
 }
@@ -589,7 +798,6 @@ fn asset_manager_rejects_reregistration_for_same_token() {
                 ManagedBuffer::from(TOKEN_ID_1),
                 ManagedBuffer::from(b"ESDT"),
                 ManagedBuffer::from(b"Hospitality"),
-                ManagedBuffer::from(b"HOTEL-ab12cd"),
             );
         });
 
@@ -606,7 +814,6 @@ fn asset_manager_rejects_reregistration_for_same_token() {
                 ManagedBuffer::from(TOKEN_ID_1),
                 ManagedBuffer::from(b"ESDT"),
                 ManagedBuffer::from(b"Hospitality"),
-                ManagedBuffer::from(TOKEN_ID_1),
             );
         });
 }
@@ -640,6 +847,12 @@ fn asset_manager_rejects_sync_holder_compliance_on_unregistered_asset() {
                 false,
                 false,
                 false,
+                0u64,
+                false,
+                false,
+                ManagedBuffer::new(),
+                ManagedBuffer::new(),
+                0u32,
             );
         });
 }
@@ -661,7 +874,6 @@ fn asset_manager_rejects_zero_address_holder() {
                 ManagedBuffer::from(TOKEN_ID_1),
                 ManagedBuffer::from(b"ESDT"),
                 ManagedBuffer::from(b"Hospitality"),
-                ManagedBuffer::from(b"HOTEL-ab12cd"),
             );
         });
 
@@ -682,6 +894,12 @@ fn asset_manager_rejects_zero_address_holder() {
                 false,
                 false,
                 false,
+                0u64,
+                false,
+                false,
+                ManagedBuffer::new(),
+                ManagedBuffer::new(),
+                0u32,
             );
         });
 }
@@ -703,7 +921,6 @@ fn asset_manager_update_asset_works() {
                 ManagedBuffer::from(TOKEN_ID_1),
                 ManagedBuffer::from(b"ESDT"),
                 ManagedBuffer::from(b"Hospitality"),
-                ManagedBuffer::from(b"HOTEL-ab12cd"),
             );
         });
 
@@ -716,7 +933,6 @@ fn asset_manager_update_asset_works() {
                 ManagedBuffer::from(TOKEN_ID_1),
                 ManagedBuffer::from(b"SFT"),
                 ManagedBuffer::from(b"RealEstate"),
-                ManagedBuffer::from(TOKEN_ID_1),
             );
         });
 
@@ -727,32 +943,8 @@ fn asset_manager_update_asset_works() {
             let asset = sc.asset(&ManagedBuffer::from(TOKEN_ID_1)).get();
             assert_eq!(asset.carrier_type, ManagedBuffer::from(b"SFT"));
             assert_eq!(asset.asset_class, ManagedBuffer::from(b"RealEstate"));
-            assert_eq!(asset.policy_id, ManagedBuffer::from(TOKEN_ID_1));
             assert_eq!(asset.policy_version_at_register, 1);
             assert!(asset.regulated);
-        });
-}
-
-#[test]
-fn asset_manager_rejects_policy_id_that_does_not_match_token_id() {
-    let mut world = world();
-
-    world.account(OWNER).nonce(1).balance(1_000_000u64);
-    world.account(GOVERNANCE).nonce(1).balance(1_000_000u64);
-    deploy_asset_manager_with_policy_registry(&mut world, GOVERNANCE);
-
-    world
-        .tx()
-        .from(GOVERNANCE)
-        .to(SC_ADDRESS)
-        .returns(ExpectError(4u64, "policy_id must equal token_id"))
-        .whitebox(drwa_asset_manager::contract_obj, |sc| {
-            sc.register_asset(
-                ManagedBuffer::from(TOKEN_ID_1),
-                ManagedBuffer::from(b"ESDT"),
-                ManagedBuffer::from(b"Hospitality"),
-                ManagedBuffer::from(TOKEN_ID_2),
-            );
         });
 }
 
@@ -777,7 +969,6 @@ fn asset_manager_update_asset_rejects_unregistered() {
                 ManagedBuffer::from(TOKEN_ID_1),
                 ManagedBuffer::from(b"SFT"),
                 ManagedBuffer::from(b"RealEstate"),
-                ManagedBuffer::from(TOKEN_ID_1),
             );
         });
 }
@@ -799,7 +990,6 @@ fn wind_down_setup() -> ScenarioWorld {
                 ManagedBuffer::from(TOKEN_ID_1),
                 ManagedBuffer::from(b"ESDT"),
                 ManagedBuffer::from(b"Hospitality"),
-                ManagedBuffer::from(b"HOTEL-ab12cd"),
             );
         });
 
@@ -887,11 +1077,9 @@ fn wind_down_complete_keeps_transfer_lock_and_rejects_cancel() {
             let body_bytes = body.to_boxed_bytes();
             let body_slice = body_bytes.as_slice();
             assert_eq!(body_slice[0], 0x01);
-            assert!(
-                core::str::from_utf8(&body_slice[1..])
-                    .unwrap()
-                    .contains("\"wind_down_status\":\"completed\"")
-            );
+            assert!(core::str::from_utf8(&body_slice[1..])
+                .unwrap()
+                .contains("\"wind_down_status\":\"completed\""));
         });
 
     world
@@ -1091,7 +1279,6 @@ fn wind_down_sets_round_and_blocks_holder_sync() {
                 ManagedBuffer::from(TOKEN_ID_2),
                 ManagedBuffer::from(b"ESDT"),
                 ManagedBuffer::from(b"Hospitality"),
-                ManagedBuffer::from(b"HOTEL-bc23de"),
             );
         });
 
@@ -1168,7 +1355,6 @@ fn asset_manager_get_holder_mirror_view() {
                 ManagedBuffer::from(TOKEN_ID_1),
                 ManagedBuffer::from(b"ESDT"),
                 ManagedBuffer::from(b"Hospitality"),
-                ManagedBuffer::from(b"HOTEL-ab12cd"),
             );
         });
 
@@ -1188,6 +1374,12 @@ fn asset_manager_get_holder_mirror_view() {
                 false,
                 false,
                 false,
+                0u64,
+                false,
+                false,
+                ManagedBuffer::new(),
+                ManagedBuffer::new(),
+                0u32,
             );
         });
 
@@ -1221,7 +1413,6 @@ fn asset_manager_rejects_governance_written_auditor_authorization() {
                 ManagedBuffer::from(TOKEN_ID_1),
                 ManagedBuffer::from(b"ESDT"),
                 ManagedBuffer::from(b"Hospitality"),
-                ManagedBuffer::from(b"HOTEL-ab12cd"),
             );
         });
 
@@ -1245,6 +1436,12 @@ fn asset_manager_rejects_governance_written_auditor_authorization() {
                 false,
                 false,
                 true,
+                0u64,
+                false,
+                false,
+                ManagedBuffer::new(),
+                ManagedBuffer::new(),
+                0u32,
             );
         });
 }

@@ -6,7 +6,7 @@ use multiversx_sc_scenario::imports::*;
 const OWNER: TestAddress = TestAddress::new("owner");
 const GOVERNANCE: TestAddress = TestAddress::new("governance");
 const SC_ADDRESS: TestSCAddress = TestSCAddress::new("mrv-registry");
-const CODE_PATH: MxscPath = MxscPath::new("output/mrv-registry.mxsc.json");
+const CODE_PATH: MxscPath = MxscPath::new("mxsc:output/mrv-registry.mxsc.json");
 const METHODOLOGY_ID: &[u8] = b"INT-AG-SOC-001";
 const METHODOLOGY_VERSION: &[u8] = b"1.0.0";
 const METHODOLOGY_DIGEST: &[u8] = b"sha256:ag-methodology-pack-001";
@@ -16,7 +16,7 @@ const VERIFICATION_CASE_ID: &[u8] = b"verification-public-010";
 const LOT_ID: &[u8] = b"lot-public-010";
 
 fn world() -> ScenarioWorld {
-    let mut blockchain = ScenarioWorld::new();
+    let mut blockchain = ScenarioWorld::new().executor_config(ExecutorConfig::full_suite());
     blockchain.set_current_dir_from_workspace("contracts/mrv/registry");
     blockchain.register_contract(CODE_PATH, mrv_registry::ContractBuilder);
     blockchain
@@ -378,9 +378,17 @@ fn mrv_registry_issuance_lifecycle_rs() {
                 ManagedBuffer::new(),
             );
             sc.retire_issuance_lot(ManagedBuffer::from(LOT_ID));
-            // B-01: replacement_lot_id is empty here; the forward/back
-            // pointer lineage is exercised in the whitebox test
-            // `mrv_registry_accepts_full_replacement_lineage`.
+        });
+
+    world
+        .tx()
+        .from(GOVERNANCE)
+        .to(SC_ADDRESS)
+        .returns(ExpectError(
+            4u64,
+            "reversal disabled pending buffer reconciliation",
+        ))
+        .whitebox(mrv_registry::contract_obj, |sc| {
             sc.reverse_issuance_lot(
                 ManagedBuffer::from(LOT_ID),
                 BigUint::from(50_000u64),
@@ -396,7 +404,8 @@ fn mrv_registry_issuance_lifecycle_rs() {
                 .get_issuance_lot(ManagedBuffer::from(LOT_ID))
                 .into_option()
                 .unwrap();
-            assert_eq!(lot.status.to_boxed_bytes().as_slice(), b"reversed");
+            assert_eq!(lot.status.to_boxed_bytes().as_slice(), b"retired");
+            assert_eq!(lot.reversed_amount_scaled, BigUint::zero());
             assert_eq!(sc.get_issuance_lots_count(), 1usize);
         });
 }

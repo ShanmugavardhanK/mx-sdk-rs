@@ -14,10 +14,7 @@ const SIGNER_TWO: TestAddress = TestAddress::new("signer-two");
 const SC_ADDRESS: TestSCAddress = TestSCAddress::new("mrv-aggregator");
 const GOVERNANCE_SC: TestSCAddress = TestSCAddress::new("mrv-governance");
 const CODE_PATH: MxscPath = MxscPath::new("output/mrv-aggregator.mxsc.json");
-const GOVERNANCE_CODE: MxscPath =
-    MxscPath::new("../../governance/output/mrv-governance.mxsc.json");
-const PAI_ID_1: &[u8] = b"CARBON-ab12cd";
-const ORACLE_COUNT: usize = 7;
+const GOVERNANCE_CODE: MxscPath = MxscPath::new("../../governance/output/mrv-governance.mxsc.json");
 const TEST_DEVICE_SECRET: [u8; 32] = [7u8; 32];
 
 fn world() -> ScenarioWorld {

@@ -10,14 +10,14 @@ const FARMER: TestAddress = TestAddress::new("farmer");
 const BUYER: TestAddress = TestAddress::new("buyer");
 const SC_ADDRESS: TestSCAddress = TestSCAddress::new("mrv-come-settlement");
 const GOVERNANCE_SC: TestSCAddress = TestSCAddress::new("mrv-governance");
-const CODE_PATH: MxscPath = MxscPath::new("output/mrv-come-settlement.mxsc.json");
+const CODE_PATH: MxscPath = MxscPath::new("mxsc:output/mrv-come-settlement.mxsc.json");
 const GOVERNANCE_CODE: MxscPath =
-    MxscPath::new("../../governance/output/mrv-governance.mxsc.json");
+    MxscPath::new("mxsc:../../governance/output/mrv-governance.mxsc.json");
 const SIGNER_ONE: TestAddress = TestAddress::new("signer-one");
 const SIGNER_TWO: TestAddress = TestAddress::new("signer-two");
 
 fn world() -> ScenarioWorld {
-    let mut world = ScenarioWorld::new();
+    let mut world = ScenarioWorld::new().executor_config(ExecutorConfig::full_suite());
     world.set_current_dir_from_workspace("contracts/mrv/come-settlement");
     world.register_contract(CODE_PATH, mrv_come_settlement::ContractBuilder);
     world.register_contract(GOVERNANCE_CODE, mrv_governance::ContractBuilder);
@@ -301,6 +301,57 @@ fn come_settlement_fund_rejects_pre_existing_escrow_rs() {
             sc.settlement_escrow(&settlement_id)
                 .set(BigUint::from(1u64));
             sc.fund_settlement(settlement_id);
+        });
+}
+
+#[test]
+fn come_settlement_fund_rejects_nonzero_nonce_rs() {
+    let mut world = world();
+
+    let come_token: TestTokenIdentifier = TestTokenIdentifier::new("COME-abcdef");
+
+    world.account(OWNER).nonce(1).balance(1_000_000u64);
+    world.account(GOVERNANCE).nonce(1).balance(1_000_000u64);
+    world
+        .account(FARMER)
+        .nonce(1)
+        .balance(1_000_000u64)
+        .esdt_nft_balance(come_token, 1u64, BigUint::from(10_000u64), ());
+    world.account(BUYER).nonce(1).balance(1_000_000u64);
+
+    world
+        .tx()
+        .from(OWNER)
+        .raw_deploy()
+        .code(CODE_PATH)
+        .new_address(SC_ADDRESS)
+        .whitebox(mrv_come_settlement::contract_obj, |sc| {
+            sc.init(GOVERNANCE.to_managed_address());
+        });
+
+    world
+        .tx()
+        .from(GOVERNANCE)
+        .to(SC_ADDRESS)
+        .whitebox(mrv_come_settlement::contract_obj, |sc| {
+            sc.create_settlement(
+                ManagedBuffer::from(b"settlement-nonce"),
+                FARMER.to_managed_address(),
+                BUYER.to_managed_address(),
+                TokenIdentifier::from("COME-abcdef"),
+                BigUint::from(10_000u64),
+                ManagedBuffer::from(b"bafyreason-nonce"),
+            );
+        });
+
+    world
+        .tx()
+        .from(FARMER)
+        .to(SC_ADDRESS)
+        .payment(Payment::try_new(come_token, 1u64, 10_000u64).unwrap())
+        .returns(ExpectError(4u64, "FUNGIBLE_ONLY: token nonce must be 0"))
+        .whitebox(mrv_come_settlement::contract_obj, |sc| {
+            sc.fund_settlement(ManagedBuffer::from(b"settlement-nonce"));
         });
 }
 

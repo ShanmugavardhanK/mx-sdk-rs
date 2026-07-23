@@ -8,11 +8,11 @@ publish = false
 path = "src/gas_tests.rs"
 
 [dependencies.multiversx-sc]
-version = "0.66.1"
+version = "0.66.2"
 path = "../../../framework/base"
 
 [dev-dependencies.multiversx-sc-scenario]
-version = "0.66.1"
+version = "0.66.2"
 path = "../../../framework/scenario"
 
 [dependencies.multiversx-chain-vm-wasmer-prod]
@@ -22,6 +22,10 @@ optional = true
 [features]
 wasmer-prod = ["multiversx-chain-vm-wasmer-prod"]
 wasmer-experimental = ["multiversx-sc-scenario/wasmer-experimental"]
+
+[patch.crates-io]
+multiversx-chain-vm-executor = { git = "https://github.com/xorewa/mx-vm-executor-rs", rev = "830f3efa2a1c8103424e4dd0c65b786e1f8305cf" }
+multiversx-chain-vm-executor-wasmer-experimental = { git = "https://github.com/xorewa/mx-vm-executor-rs", rev = "830f3efa2a1c8103424e4dd0c65b786e1f8305cf" }
 
 [workspace]
 members = ["."]

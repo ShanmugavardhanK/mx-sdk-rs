@@ -90,7 +90,7 @@ pub fn invoke_drwa_native_governance_query<M: ManagedTypeApi>(
 ) -> OptionalValue<ManagedBuffer<M>> {
     #[cfg(target_arch = "wasm32")]
     unsafe {
-        let mut result: ManagedBuffer<M> = ManagedBuffer::new();
+        let result: ManagedBuffer<M> = ManagedBuffer::new();
         let rc = managedDRWANativeGovernanceQuery(
             query_type,
             key.get_handle().get_raw_handle(),
@@ -259,6 +259,8 @@ pub struct DrwaTokenPolicy<M: ManagedTypeApi> {
     pub token_policy_version: u64,
     pub allowed_investor_classes: ManagedVec<M, ManagedBuffer<M>>,
     pub allowed_jurisdictions: ManagedVec<M, ManagedBuffer<M>>,
+    pub travel_rule_required: bool,
+    pub sanctions_screening_enabled: bool,
 }
 
 /// Per-holder, per-token compliance state mirrored to the native DRWA layer.
@@ -276,6 +278,12 @@ pub struct DrwaHolderMirror<M: ManagedTypeApi> {
     pub transfer_locked: bool,
     pub receive_locked: bool,
     pub auditor_authorized: bool,
+    pub lock_until_round: u64,
+    pub travel_rule_attested: bool,
+    pub sanctions_cleared: bool,
+    pub sanctions_screening_cid: ManagedBuffer<M>,
+    pub ubo_parent_entity: ManagedBuffer<M>,
+    pub ownership_pct: u32,
 }
 
 /// Per-holder identity profile mirrored to the native DRWA layer.
@@ -517,11 +525,23 @@ pub trait DrwaGovernanceModule {
         pre_recovery_state_hash: ManagedBuffer,
         recovery_scope: ManagedVec<ManagedBuffer>,
     ) -> DrwaSyncEnvelope<Self::Api> {
-        require!(!recovery_scope.is_empty(), "recovery scope required");
+        require!(
+            recovery_scope.len() == 1,
+            "exactly one recovery scope token required"
+        );
+        require!(
+            pre_recovery_state_hash.len() == 32,
+            "32-byte pre-recovery state hash required"
+        );
         let caller_domain = DrwaCallerDomain::RecoveryAdmin;
         let payload_hash = self
             .crypto()
-            .keccak256(serialize_sync_envelope_payload(&caller_domain, &operations))
+            .keccak256(serialize_recovery_sync_envelope_payload(
+                &caller_domain,
+                &operations,
+                &pre_recovery_state_hash,
+                &recovery_scope,
+            ))
             .as_managed_buffer()
             .clone();
 
@@ -598,6 +618,27 @@ pub fn build_sync_hook_payload_with_recovery_metadata<M: ManagedTypeApi>(
     pre_recovery_state_hash: &ManagedBuffer<M>,
     recovery_scope: &ManagedVec<M, ManagedBuffer<M>>,
 ) -> ManagedBuffer<M> {
+    let canonical_payload = serialize_recovery_sync_envelope_payload(
+        caller_domain,
+        operations,
+        pre_recovery_state_hash,
+        recovery_scope,
+    );
+
+    let mut result = ManagedBuffer::new();
+    result.append(payload_hash);
+    result.append(&canonical_payload);
+    result
+}
+
+/// Serializes every schema-v2 recovery control into the canonical payload
+/// committed by `payload_hash` and consumed by the native hook.
+pub fn serialize_recovery_sync_envelope_payload<M: ManagedTypeApi>(
+    caller_domain: &DrwaCallerDomain,
+    operations: &ManagedVec<M, DrwaSyncOperation<M>>,
+    pre_recovery_state_hash: &ManagedBuffer<M>,
+    recovery_scope: &ManagedVec<M, ManagedBuffer<M>>,
+) -> ManagedBuffer<M> {
     let mut canonical_payload = ManagedBuffer::new();
     canonical_payload.append_bytes(&DRWA_SYNC_ENVELOPE_SCHEMA_VERSION_WITH_RECOVERY.to_be_bytes());
     canonical_payload.append_bytes(&[match caller_domain {
@@ -615,11 +656,7 @@ pub fn build_sync_hook_payload_with_recovery_metadata<M: ManagedTypeApi>(
     }
     canonical_payload.append_bytes(&(operations.len() as u16).to_be_bytes());
     append_sync_operations(&mut canonical_payload, operations);
-
-    let mut result = ManagedBuffer::new();
-    result.append(payload_hash);
-    result.append(&canonical_payload);
-    result
+    canonical_payload
 }
 
 fn append_sync_operations<M: ManagedTypeApi>(

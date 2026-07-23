@@ -12,18 +12,18 @@ const SIGNER_ONE: TestAddress = TestAddress::new("signer-one");
 const SIGNER_TWO: TestAddress = TestAddress::new("signer-two");
 const SC_ADDRESS: TestSCAddress = TestSCAddress::new("mrv-carbon-credit");
 const BUFFER_POOL_SC_ADDRESS: TestSCAddress = TestSCAddress::new("mrv-buffer-pool");
-const CODE_PATH: MxscPath = MxscPath::new("output/mrv-carbon-credit.mxsc.json");
+const CODE_PATH: MxscPath = MxscPath::new("mxsc:output/mrv-carbon-credit.mxsc.json");
 const BUFFER_POOL_CODE_PATH: MxscPath =
-    MxscPath::new("../buffer-pool/output/mrv-buffer-pool.mxsc.json");
+    MxscPath::new("mxsc:../buffer-pool/output/mrv-buffer-pool.mxsc.json");
 const GOVERNANCE_SC_ADDRESS: TestSCAddress = TestSCAddress::new("mrv-governance");
 const GOVERNANCE_CODE_PATH: MxscPath =
-    MxscPath::new("../governance/output/mrv-governance.mxsc.json");
+    MxscPath::new("mxsc:../governance/output/mrv-governance.mxsc.json");
 const DVCU_TOKEN: TestTokenIdentifier = TestTokenIdentifier::new("DVCU-123456");
 const DGSC_TOKEN: TestTokenIdentifier = TestTokenIdentifier::new("DGSC-123456");
 const BUFFER_TOKEN: TestTokenIdentifier = TestTokenIdentifier::new("BUFR-123456");
 
 fn world() -> ScenarioWorld {
-    let mut world = ScenarioWorld::new();
+    let mut world = ScenarioWorld::new().executor_config(ExecutorConfig::full_suite());
     world.set_current_dir_from_workspace("contracts/mrv/carbon-credit");
     world.register_contract(CODE_PATH, mrv_carbon_credit::ContractBuilder);
     world.register_contract(BUFFER_POOL_CODE_PATH, mrv_buffer_pool::ContractBuilder);
@@ -644,8 +644,8 @@ fn configure_gsoc_governance(world: &mut ScenarioWorld) {
         });
 }
 
-fn make_bundle_ref<M: multiversx_sc::api::ManagedTypeApi>()
--> mrv_carbon_credit::ExecutionBundleRef<M> {
+fn make_bundle_ref<M: multiversx_sc::api::ManagedTypeApi>(
+) -> mrv_carbon_credit::ExecutionBundleRef<M> {
     mrv_carbon_credit::ExecutionBundleRef {
         science_service_image_digest: ManagedBuffer::from(b"sha256:image-010"),
         parameter_pack_hash: ManagedBuffer::from(b"sha256:param-010"),
@@ -1052,6 +1052,10 @@ fn carbon_credit_records_issuance_lot_reversal_rs() {
         .from(GOVERNANCE)
         .to(SC_ADDRESS)
         .payment(Payment::try_new(DVCU_TOKEN, 0, 3_000u64).unwrap())
+        .returns(ExpectError(
+            4u64,
+            "reversal disabled pending buffer reconciliation",
+        ))
         .whitebox(mrv_carbon_credit::contract_obj, |sc| {
             sc.record_issuance_lot_reversal(
                 ManagedBuffer::from(b"lot-reversal-001"),
@@ -1064,18 +1068,17 @@ fn carbon_credit_records_issuance_lot_reversal_rs() {
         .query()
         .to(SC_ADDRESS)
         .whitebox(mrv_carbon_credit::contract_obj, |sc| {
-            let amount = sc
+            assert!(sc
                 .get_recorded_issuance_lot_reversal(ManagedBuffer::from(b"lot-reversal-001"))
                 .into_option()
-                .unwrap();
-            assert_eq!(amount, BigUint::from(3_000u64));
+                .is_none());
             assert_eq!(sc.total_dvcu_minted().get(), BigUint::from(9_500u64));
-            assert_eq!(sc.total_dvcu_burned().get(), BigUint::from(3_000u64));
+            assert_eq!(sc.total_dvcu_burned().get(), BigUint::zero());
         });
 
     world
         .check_account(GOVERNANCE)
-        .esdt_balance(DVCU_TOKEN, BigUint::from(6_500u64));
+        .esdt_balance(DVCU_TOKEN, BigUint::from(9_500u64));
 }
 
 #[test]
@@ -1473,10 +1476,9 @@ fn carbon_credit_gsoc_retirement_rs() {
         .query()
         .to(SC_ADDRESS)
         .whitebox(mrv_carbon_credit::contract_obj, |sc| {
-            assert!(
-                sc.gsoc_retired_serials()
-                    .contains(&ManagedBuffer::from(b"ITMO-RET"))
-            );
+            assert!(sc
+                .gsoc_retired_serials()
+                .contains(&ManagedBuffer::from(b"ITMO-RET")));
             assert_eq!(sc.total_dgsc_minted().get(), BigUint::from(95_000u64));
             assert_eq!(sc.total_dgsc_burned().get(), BigUint::from(95_000u64));
             assert_eq!(

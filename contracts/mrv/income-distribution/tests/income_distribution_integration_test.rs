@@ -17,11 +17,11 @@ const OWNER: TestAddress = TestAddress::new("owner");
 const GOVERNANCE: TestAddress = TestAddress::new("governance");
 const HOLDER_A: TestAddress = TestAddress::new("holder_a");
 const INCOME_SC: TestSCAddress = TestSCAddress::new("mrv-income-distribution");
-const CODE_PATH: MxscPath = MxscPath::new("output/mrv-income-distribution.mxsc.json");
+const CODE_PATH: MxscPath = MxscPath::new("mxsc:output/mrv-income-distribution.mxsc.json");
 const COME_TOKEN: TestTokenIdentifier = TestTokenIdentifier::new("COME-abcdef");
 
 fn world() -> ScenarioWorld {
-    let mut world = ScenarioWorld::new();
+    let mut world = ScenarioWorld::new().executor_config(ExecutorConfig::full_suite());
     world.set_current_dir_from_workspace("contracts/mrv/income-distribution");
     world.register_contract(CODE_PATH, mrv_income_distribution::ContractBuilder);
     world
@@ -68,7 +68,7 @@ fn claim_yield_rejects_oversized_merkle_proof() {
             ManagedBuffer::from(&merkle_root[..]),
             100u64,
             ManagedBuffer::from("Qm-test-cid"),
-            100_000u64,
+            1_000u64,
         )
         .payment(EsdtTokenPayment::new(
             COME_TOKEN.to_esdt_token_identifier(),
@@ -135,7 +135,7 @@ fn fund_and_query_lifecycle() {
             ManagedBuffer::from(&merkle_root[..]),
             100u64,
             ManagedBuffer::from("Qm-lifecycle-cid"),
-            100_000u64,
+            1_000u64,
         )
         .payment(EsdtTokenPayment::new(
             COME_TOKEN.to_esdt_token_identifier(),
