@@ -140,8 +140,8 @@ fn setup_template_test_current(
             file,
             r#"
 [patch.crates-io]
-multiversx-chain-vm-executor = {{ git = "https://github.com/ShanmugavardhanK/mx-vm-executor-rs", rev = "bb2e51477766fce9f794a512a208f851f1e0aaba" }}
-multiversx-chain-vm-executor-wasmer-experimental = {{ git = "https://github.com/ShanmugavardhanK/mx-vm-executor-rs", rev = "bb2e51477766fce9f794a512a208f851f1e0aaba" }}
+multiversx-chain-vm-executor = {{ git = "https://github.com/xorewa/mx-vm-executor-rs", rev = "830f3efa2a1c8103424e4dd0c65b786e1f8305cf" }}
+multiversx-chain-vm-executor-wasmer-experimental = {{ git = "https://github.com/xorewa/mx-vm-executor-rs", rev = "830f3efa2a1c8103424e4dd0c65b786e1f8305cf" }}
 "#
         ).unwrap();
     }
