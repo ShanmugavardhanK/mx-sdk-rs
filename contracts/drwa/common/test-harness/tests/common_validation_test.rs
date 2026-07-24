@@ -4,10 +4,10 @@ use multiversx_sc_scenario::imports::*;
 
 const OWNER: TestAddress = TestAddress::new("owner");
 const SC_ADDRESS: TestSCAddress = TestSCAddress::new("drwa-common-test-harness");
-const CODE_PATH: MxscPath = MxscPath::new("mxsc:output/drwa-common-test-harness.mxsc.json");
+const CODE_PATH: MxscPath = MxscPath::new("output/drwa-common-test-harness.mxsc.json");
 
 fn world() -> ScenarioWorld {
-    let mut world = ScenarioWorld::new().executor_config(ExecutorConfig::full_suite());
+    let mut world = ScenarioWorld::new();
     world.set_current_dir_from_workspace("contracts/drwa/common/test-harness");
     world.register_contract(CODE_PATH, drwa_common_test_harness::ContractBuilder);
     world

@@ -1312,9 +1312,10 @@ fn pause_distribution_and_unpause() {
         .query()
         .to(SC_ADDRESS)
         .whitebox(mrv_income_distribution::contract_obj, |sc| {
-            assert!(sc
-                .distribution_paused(&ManagedBuffer::from(b"dist-pause-test"))
-                .get());
+            assert!(
+                sc.distribution_paused(&ManagedBuffer::from(b"dist-pause-test"))
+                    .get()
+            );
         });
 
     // Claim while paused fails
@@ -1347,9 +1348,10 @@ fn pause_distribution_and_unpause() {
         .query()
         .to(SC_ADDRESS)
         .whitebox(mrv_income_distribution::contract_obj, |sc| {
-            assert!(!sc
-                .distribution_paused(&ManagedBuffer::from(b"dist-pause-test"))
-                .get());
+            assert!(
+                !sc.distribution_paused(&ManagedBuffer::from(b"dist-pause-test"))
+                    .get()
+            );
         });
 
     // Claim after unpause succeeds (with valid proof)
